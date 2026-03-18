@@ -1,0 +1,162 @@
+"""FastAPI server with SSE streaming endpoint for the SQL agent."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
+
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
+from starlette.responses import StreamingResponse
+
+from src.agent.factory import create_sql_agent
+from src.config import settings
+from src.sandbox.app import terminate_sandbox
+from src.streaming.sse_encoder import encode_stream_async
+
+logger = logging.getLogger("neo-deep-agent-lab")
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+_agent: Any = None
+_thread_id: str = "main"
+
+
+class ChatRequest(BaseModel):
+    """Request body for the chat endpoint."""
+
+    message: str
+
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+
+    status: str
+    agent_ready: bool
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage agent and sandbox lifecycle."""
+    global _agent
+    logger.info("Starting agent and Modal sandbox...")
+    _agent = create_sql_agent()
+    logger.info("Agent ready.")
+    yield
+    logger.info("Shutting down sandbox...")
+    terminate_sandbox()
+    logger.info("Shutdown complete.")
+
+
+app = FastAPI(
+    title="Neo Deep Agent Lab",
+    description="Conversational SQL agent with Modal sandbox",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/")
+async def index():
+    """Serve the frontend."""
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health() -> HealthResponse:
+    """Health check endpoint."""
+    return HealthResponse(status="ok", agent_ready=_agent is not None)
+
+
+@app.get("/history")
+async def get_history():
+    """Return the current conversation history from the checkpointer."""
+    try:
+        config = {"configurable": {"thread_id": _thread_id}}
+        state = _agent.get_state(config)
+        messages = []
+        for msg in state.values.get("messages", []):
+            if hasattr(msg, "type"):
+                if msg.type == "human":
+                    messages.append({"role": "user", "content": msg.content})
+                elif msg.type == "ai" and msg.content:
+                    messages.append({"role": "assistant", "content": msg.content})
+        return {"messages": messages}
+    except Exception:
+        return {"messages": []}
+
+
+@app.post("/reset")
+async def reset_conversation():
+    """Reset the conversation by generating a new thread_id."""
+    global _thread_id
+    _thread_id = str(uuid.uuid4())
+    return {"status": "ok", "thread_id": _thread_id}
+
+
+@app.post("/chat")
+async def chat(request: ChatRequest) -> StreamingResponse:
+    """Chat endpoint with SSE streaming.
+
+    Send a message and receive streaming SSE events with the agent's response,
+    including text tokens and tool call events.
+    """
+    if _agent is None:
+        return StreamingResponse(
+            content=iter(['data: {"type": "error", "message": "Agent not initialized"}\n\n']),
+            media_type="text/event-stream",
+        )
+
+    config = {"configurable": {"thread_id": _thread_id}}
+
+    async def event_generator():
+        stream = _agent.astream(
+            {"messages": [HumanMessage(content=request.message)]},
+            stream_mode=["messages"],
+            config=config,
+            version="v2",
+        )
+        async for sse_line, _content in encode_stream_async(stream):
+            yield sse_line
+
+    return StreamingResponse(
+        content=event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def main() -> None:
+    """Entry point for the server."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
+    uvicorn.run(
+        "src.server.app:app",
+        host="0.0.0.0",
+        port=settings.SERVER_PORT,
+        reload=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

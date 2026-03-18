@@ -1,0 +1,46 @@
+from enum import Enum
+
+
+class LLMProvider(str, Enum):
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+
+
+class SSEEventType(str, Enum):
+    TEXT_DELTA = "text-delta"
+    TOOL_CALL_START = "tool-call-start"
+    TOOL_CALL_END = "tool-call-end"
+    ERROR = "error"
+    DONE = "done"
+
+
+class SQLKeyword(str, Enum):
+    SELECT = "SELECT"
+    WITH = "WITH"
+    EXPLAIN = "EXPLAIN"
+
+
+ALLOWED_SQL_KEYWORDS = frozenset({kw.value for kw in SQLKeyword})
+
+FORBIDDEN_SQL_KEYWORDS = frozenset(
+    {
+        "DROP",
+        "DELETE",
+        "UPDATE",
+        "INSERT",
+        "ALTER",
+        "TRUNCATE",
+        "CREATE",
+        "GRANT",
+        "REVOKE",
+        "VACUUM",
+        "REINDEX",
+    }
+)
+
+DEFAULT_MAX_RESULT_ROWS = 50
+DEFAULT_SQL_TIMEOUT_MS = 10_000
+DEFAULT_SERVER_PORT = 8080
+MODAL_APP_NAME = "neo-deep-agent-lab"
+PG_USER = "postgres"
+PG_DATABASE = "postgres"

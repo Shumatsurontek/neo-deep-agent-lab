@@ -1,0 +1,43 @@
+[project]
+name = "neo-deep-agent-lab"
+version = "0.1.0"
+description = "PoC: LangChain Deep Agent with SQL tool in Modal sandbox"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents>=0.1",
+    "langchain>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-modal>=0.0.1",
+    "langgraph>=1.1",
+    "modal>=0.73",
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "sse-starlette>=2.0",
+    "pydantic-settings>=2.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+lab-serve = "src.server.app:main"
+lab-cli = "src.cli.chat:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
