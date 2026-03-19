@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDER: str = "openai"  # "anthropic" or "openai"
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
 
     # Middleware
     CONTEXT_EDITING_TRIGGER: int = 80_000  # tokens threshold to clear old tool results

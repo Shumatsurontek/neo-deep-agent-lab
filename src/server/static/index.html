@@ -124,6 +124,44 @@
         }
         .btn-reset:hover { background: var(--text-bright); color: var(--bg-default); }
 
+        /* ── PROVIDER SELECTOR ────────────────── */
+        .provider-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .provider-select, .model-select {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: var(--bg-paper);
+            border: 0.5px solid var(--border-secondary);
+            color: var(--text-secondary);
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .provider-select:hover, .model-select:hover { border-color: var(--text-secondary); color: var(--text-bright); }
+        .provider-select:focus, .model-select:focus { border-color: var(--accent-purple); }
+        .provider-select option, .model-select option {
+            background: var(--bg-paper);
+            color: var(--text-primary);
+        }
+
+        .provider-loading {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-yellow);
+            animation: pulse 1s infinite;
+        }
+
         /* ── CHAT AREA ─────────────────────────── */
         #chat {
             flex: 1;
@@ -500,6 +538,12 @@
             </div>
         </div>
         <div class="header-right">
+            <div class="provider-group">
+                <select id="providerSelect" class="provider-select" onchange="onProviderChange()"></select>
+                <select id="modelSelect" class="model-select" onchange="onModelChange()"></select>
+                <button class="btn-reset" onclick="loadProviders()" title="Refresh models" style="padding:4px 8px;font-size:9px">↻</button>
+                <span id="providerStatus" class="provider-loading" style="display:none">switching...</span>
+            </div>
             <div class="status-dot" id="statusDot"></div>
             <span class="status-label" id="statusLabel">ready</span>
             <button class="btn-reset" onclick="resetChat()">reset</button>
@@ -926,7 +970,85 @@ function renderMarkdown(text) {
 function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function scrollToBottom() { requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; }); }
 
+/* ── Provider switching ──────────────────────── */
+const providerSelect = document.getElementById('providerSelect');
+const modelSelect = document.getElementById('modelSelect');
+const providerStatus = document.getElementById('providerStatus');
+let providersData = [];
+let currentProvider = '';
+let currentModel = '';
+
+async function loadProviders() {
+    try {
+        const res = await fetch('/providers');
+        const data = await res.json();
+        providersData = data.providers;
+        currentProvider = data.current.provider;
+        currentModel = data.current.model;
+
+        providerSelect.innerHTML = '';
+        for (const p of providersData) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            const noModels = p.available === false || p.models.length === 0;
+            opt.textContent = p.name + (noModels ? ' (offline)' : ` (${p.models.length})`);
+            opt.disabled = noModels;
+            if (p.id === currentProvider && !noModels) opt.selected = true;
+            providerSelect.appendChild(opt);
+        }
+        populateModels(currentProvider, currentModel);
+    } catch (e) { /* silent */ }
+}
+
+function populateModels(providerId, selectedModel) {
+    const provider = providersData.find(p => p.id === providerId);
+    if (!provider) return;
+    modelSelect.innerHTML = '';
+    for (const m of provider.models) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === selectedModel) opt.selected = true;
+        modelSelect.appendChild(opt);
+    }
+}
+
+function onProviderChange() {
+    const newProvider = providerSelect.value;
+    const provider = providersData.find(p => p.id === newProvider);
+    if (!provider) return;
+    populateModels(newProvider, provider.models[0]);
+    switchProvider(newProvider, provider.models[0]);
+}
+
+function onModelChange() {
+    switchProvider(providerSelect.value, modelSelect.value);
+}
+
+async function switchProvider(provider, model) {
+    if (provider === currentProvider && model === currentModel) return;
+    providerStatus.style.display = 'inline';
+    sendBtn.disabled = true;
+
+    try {
+        const res = await fetch('/provider', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, model }),
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            currentProvider = data.provider;
+            currentModel = data.model;
+        }
+    } catch (e) { /* silent */ }
+
+    providerStatus.style.display = 'none';
+    sendBtn.disabled = false;
+}
+
 /* ── Init ────────────────────────────────────── */
+loadProviders();
 loadHistory();
 inputEl.focus();
 </script>
