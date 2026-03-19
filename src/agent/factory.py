@@ -16,6 +16,7 @@ from langchain.agents.middleware import (
 )
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
@@ -45,17 +46,23 @@ def _build_model(
     """Build an LLM from provider/model strings (defaults to settings)."""
     p = (provider or settings.LLM_PROVIDER).lower()
     m = model or settings.LLM_MODEL
+    logger.info("Building model: provider=%s, model=%s", p, m)
 
     if p == LLMProvider.OPENAI:
-        return ChatOpenAI(model=m, api_key=SecretStr(settings.OPENAI_API_KEY))
+        llm = ChatOpenAI(model=m, api_key=SecretStr(settings.OPENAI_API_KEY))
+    elif p == LLMProvider.OLLAMA:
+        llm = ChatOllama(model=m, base_url=settings.OLLAMA_BASE_URL)
+    else:
+        llm = ChatAnthropic(
+            model_name=m,
+            api_key=SecretStr(settings.ANTHROPIC_API_KEY),
+            max_retries=6,
+            timeout=None,
+            stop=None,
+        )
 
-    return ChatAnthropic(
-        model_name=m,
-        api_key=SecretStr(settings.ANTHROPIC_API_KEY),
-        max_retries=6,
-        timeout=None,
-        stop=None,
-    )
+    logger.info("Model ready: %s (%s)", type(llm).__name__, m)
+    return llm
 
 
 def _build_middleware() -> list:
@@ -119,12 +126,14 @@ def _build_middleware() -> list:
     return stack
 
 
-def create_sql_agent() -> CompiledStateGraph:
+def create_sql_agent(
+    provider: str | None = None, model: str | None = None
+) -> CompiledStateGraph:
     """Create and return a fully configured Deep Agent for SQL analysis."""
     get_or_create_sandbox()
 
     return create_deep_agent(
-        model=_build_model(),
+        model=_build_model(provider, model),
         tools=[execute_sql, get_database_schema, export_csv, export_json],
         system_prompt=SQL_AGENT_PROMPT,
         middleware=_build_middleware(),
