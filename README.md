@@ -60,11 +60,6 @@ graph LR
 ## 🔥 Features
 
 
-|     |
-| --- |
-|     |
-
-
 ### 🤖 Agent SQL Intelligent
 
 Generation et execution de SQL a partir de questions en langage naturel. Support multi-tables, JOINs, CTEs, agregations.
