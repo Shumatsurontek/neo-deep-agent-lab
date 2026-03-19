@@ -52,3 +52,46 @@ class ExportResultInput(BaseModel):
             "Use a short descriptive name like 'users_arthur' or 'inbox_messages'."
         ),
     )
+
+
+class GenerateChartInput(BaseModel):
+    """Input schema for the generate_chart tool."""
+
+    model_config = {"strict": True}
+
+    query: str = Field(
+        description=(
+            "A SELECT SQL query providing the data for the chart. "
+            "Include meaningful column names and LIMIT to avoid huge datasets."
+        ),
+        min_length=1,
+    )
+    chart_type: str = Field(
+        default="bar",
+        description=(
+            "Type of chart to generate. "
+            "Supported: bar, line, scatter, hist, heatmap, pie, box."
+        ),
+    )
+    title: str = Field(
+        default="Chart",
+        description="Title displayed on the chart.",
+    )
+
+
+class AnalyzeQueryInput(BaseModel):
+    """Input schema for the analyze_query tool."""
+
+    model_config = {"strict": True}
+
+    query: str = Field(
+        description="A SELECT SQL query providing the data to analyze.",
+        min_length=1,
+    )
+    analysis: str = Field(
+        default="describe",
+        description=(
+            "Type of analysis to run. "
+            "Supported: describe, corr, value_counts, info, nunique."
+        ),
+    )

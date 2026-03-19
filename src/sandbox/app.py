@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 import modal
@@ -10,31 +11,30 @@ from src.config import settings
 from src.constants import MODAL_APP_NAME
 from src.sandbox.image import create_pg_image
 
+logger = logging.getLogger("neo-deep-agent-lab")
+
 _sandbox: Optional[modal.Sandbox] = None
 
+# Exceptions raised when a sandbox has expired / timed out
+_STALE_SANDBOX_ERRORS = (
+    modal.exception.NotFoundError,
+    modal.exception.ConflictError,
+)
 
-def get_or_create_sandbox() -> modal.Sandbox:
-    """Get existing sandbox or create a new one.
 
-    Reuses the same sandbox within a session to avoid cold starts.
-    PostgreSQL is started and the dump is loaded on first creation.
-    """
-    global _sandbox
-
-    if _sandbox is not None:
-        return _sandbox
-
+def _create_sandbox() -> modal.Sandbox:
+    """Create a fresh sandbox and initialize PostgreSQL."""
     image = create_pg_image(dump_path=settings.DB_DUMP_PATH)
     app = modal.App.lookup(MODAL_APP_NAME, create_if_missing=True)
 
-    _sandbox = modal.Sandbox.create(
+    sb = modal.Sandbox.create(
         app=app,
         image=image,
         timeout=600,  # 10 minutes max per sandbox session
     )
 
     # Run the init script that starts PG and loads the dump
-    result = _sandbox.exec("bash", "/tmp/init_pg.sh")  # nosec B108
+    result = sb.exec("bash", "/tmp/init_pg.sh")  # nosec B108
     stdout = result.stdout.read()
     stderr = result.stderr.read()
     result.wait()
@@ -44,19 +44,51 @@ def get_or_create_sandbox() -> modal.Sandbox:
             f"PostgreSQL init failed:\nstdout: {stdout}\nstderr: {stderr}"
         )
 
-    print(stdout)
+    logger.info("Sandbox created and PG initialized: %s", stdout.strip()[:120])
+    return sb
 
+
+def get_or_create_sandbox() -> modal.Sandbox:
+    """Get existing sandbox or create a new one.
+
+    Reuses the same sandbox within a session to avoid cold starts.
+    If the sandbox has expired, transparently recreates it.
+    """
+    global _sandbox
+
+    if _sandbox is not None:
+        return _sandbox
+
+    _sandbox = _create_sandbox()
     return _sandbox
 
 
+def _invalidate_sandbox() -> None:
+    """Mark the current sandbox as dead so the next call recreates it."""
+    global _sandbox
+    logger.warning("Sandbox expired or lost — will recreate on next call.")
+    _sandbox = None
+
+
 def exec_in_sandbox(cmd: str) -> tuple[str, str, int]:
-    """Execute a command in the sandbox. Returns (stdout, stderr, exit_code)."""
-    sandbox = get_or_create_sandbox()
-    result = sandbox.exec("bash", "-c", cmd)
-    stdout = result.stdout.read()
-    stderr = result.stderr.read()
-    result.wait()
-    return stdout, stderr, result.returncode
+    """Execute a command in the sandbox. Returns (stdout, stderr, exit_code).
+
+    If the sandbox has expired (timeout, shutdown), it is transparently
+    recreated and the command is retried once.
+    """
+    for attempt in range(2):
+        sandbox = get_or_create_sandbox()
+        try:
+            result = sandbox.exec("bash", "-c", cmd)
+            stdout = result.stdout.read()
+            stderr = result.stderr.read()
+            result.wait()
+            return stdout, stderr, result.returncode
+        except _STALE_SANDBOX_ERRORS:
+            _invalidate_sandbox()
+            if attempt > 0:
+                raise
+    raise RuntimeError("Sandbox exec failed after retries")
 
 
 def terminate_sandbox() -> None:

@@ -377,6 +377,14 @@
         }
         .result-table tr:hover td { background: rgba(167, 125, 255, 0.04); }
 
+        /* Chart image */
+        .chart-img {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 0.5px solid var(--border-primary);
+            margin: 8px 0;
+        }
+
         /* Tool action buttons */
         .tool-actions { display: flex; gap: 6px; margin-top: 8px; }
 
@@ -719,7 +727,18 @@ function finalizeToolStep(step, toolOutput, toolInput) {
     } else if (toolOutput.includes('/download/')) {
         const dlMatch = toolOutput.match(/\/download\/([a-f0-9-]+)\/([^\s]+)/);
         const rowMatch = toolOutput.match(/(\d+) lignes/);
-        if (dlMatch) {
+        const isImage = dlMatch && /\.(png|jpg|jpeg|svg)$/i.test(dlMatch[2]);
+        if (dlMatch && isImage) {
+            html += `<div style="padding:4px 0">
+                <img src="/download/${dlMatch[1]}/${dlMatch[2]}" class="chart-img" alt="${escapeHtml(dlMatch[2])}" onload="scrollToBottom()" />
+                <div style="margin-top:6px">
+                    <a href="/download/${dlMatch[1]}/${dlMatch[2]}" download class="dl-card">
+                        <svg class="dl-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span class="dl-card-name">${escapeHtml(dlMatch[2])}</span>
+                    </a>
+                </div>
+            </div>`;
+        } else if (dlMatch) {
             html += `<div style="padding:4px 0">
                 <a href="/download/${dlMatch[1]}/${dlMatch[2]}" download class="dl-card">
                     <svg class="dl-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -738,6 +757,12 @@ function finalizeToolStep(step, toolOutput, toolInput) {
     }
 
     body.innerHTML = html;
+
+    // Auto-open tool step if it contains a chart image
+    if (body.querySelector('.chart-img')) {
+        details.open = true;
+        scrollToBottom();
+    }
 
     const copyBtn = body.querySelector('.btn-copy');
     const csvBtn = body.querySelector('.btn-csv');
@@ -935,6 +960,13 @@ async function resetChat() {
 /* ── Markdown renderer ───────────────────────── */
 function renderMarkdown(text) {
     let h = escapeHtml(text);
+    // Chart images → inline preview + download
+    h = h.replace(/\/download\/([a-f0-9-]+)\/([^\s<]+\.(?:png|jpg|jpeg|svg))/gi, (_, id, f) =>
+        `<img src="/download/${id}/${f}" class="chart-img" alt="${f}" />` +
+        `<br><a href="/download/${id}/${f}" download class="dl-inline">` +
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>` +
+        `${f}</a>`
+    );
     // Download links → styled buttons
     h = h.replace(/\/download\/([a-f0-9-]+)\/([^\s<]+)/g, (_, id, f) =>
         `<a href="/download/${id}/${f}" download class="dl-inline">` +

@@ -12,7 +12,7 @@ Conversational SQL Agent with Sandboxed Execution & Deep Agents Middleware
 
 ## ⚡ TL;DR
 
-> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, tool retry, context editing, model fallback...) assurent securite et resilience. Frontend avec streaming SSE, tool panels interactifs, et export CSV/JSON.
+> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, tool retry, context editing, model fallback...) assurent securite et resilience. Frontend avec streaming SSE, tool panels interactifs, export CSV/JSON, et **switch de provider a chaud** (OpenAI, Anthropic, Ollama local).
 
 ---
 
@@ -41,11 +41,14 @@ graph LR
 
     A --> T1["execute_sql"]
     A --> T2["get_database_schema"]
-    A --> T3["export_csv"]
-    A --> T4["export_json"]
+    A --> T3["export_csv / export_json"]
+    A --> T4["generate_chart"]
+    A --> T5["analyze_query"]
 
     T1 & T2 & T3 --> PG_GW[PG Gateway]
+    T4 & T5 --> PY[Python + pandas/seaborn]
     PG_GW --> SB[Modal Sandbox]
+    PY --> SB
     SB --> PG[(PostgreSQL 15)]
 
     A -.-> LS[LangSmith]
@@ -72,7 +75,13 @@ PostgreSQL 15 dans un conteneur Modal ephemere. Utilisateur read-only, timeout 1
 
 Tools dedies pour l'export. L'agent genere des fichiers telechargeable avec liens directs dans le chat.
 
+### 📊 Charts Seaborn
 
+Generation de graphiques (bar, line, scatter, hist, heatmap, pie, box) directement dans le sandbox Modal. Les charts sont affiches inline dans le chat et telechargeable en PNG.
+
+### 🔬 Analyse SQL Avancee
+
+Statistiques descriptives, correlations, distributions, profiling — le tout execute via pandas dans le sandbox. Pas besoin de Python cote client.
 
 ### ⚡ Streaming SSE Temps Reel
 
@@ -86,10 +95,13 @@ SQL guard, tool retry, tool call limit, logging, context editing, model retry, m
 
 `MemorySaver` (checkpointer) + `InMemoryStore` (StoreBackend). Summarization automatique built-in Deep Agents.
 
+### 🔀 Multi-Provider (OpenAI, Anthropic, Ollama)
+
+Switch de provider et modele **a chaud** depuis l'interface. Les modeles Ollama sont detectes dynamiquement via l'API locale (`/api/tags`).
+
 ### 🔍 LangSmith Tracing
 
 Traces completes de chaque appel agent, tool, et middleware. Optionnel, activable via `.env`.
-
 
 
 ---
@@ -136,19 +148,20 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 ## 🛠️ Tech Stack
 
 
-| Composant       | Technologie                                            |
-| --------------- | ------------------------------------------------------ |
-| Agent Framework | LangChain Deep Agents + LangGraph v2                   |
-| LLM             | Claude Sonnet 4 / GPT-5-mini (+ fallback configurable) |
-| Middleware      | `langchain.agents.middleware` (5 built-in + 2 custom)  |
-| Sandbox         | Modal (conteneur isole, PG15, read-only)               |
-| Base de donnees | PostgreSQL 15                                          |
-| API Server      | FastAPI + SSE streaming                                |
-| Frontend        | HTML/JS vanilla            |
-| CLI             | Rich (panels, markdown, spinners)                      |
-| Validation      | Pydantic v2 (strict mode)                              |
-| Tracing         | LangSmith                                              |
-| Store           | InMemoryStore + StoreBackend (Deep Agents)             |
+| Composant       | Technologie                                             |
+| --------------- | ------------------------------------------------------- |
+| Agent Framework | LangChain Deep Agents + LangGraph v2                    |
+| LLM             | OpenAI / Anthropic / **Ollama** (switch a chaud via UI) |
+| Middleware      | `langchain.agents.middleware` (5 built-in + 2 custom)   |
+| Sandbox         | Modal (conteneur isole, PG15, read-only)                |
+| Base de donnees | PostgreSQL 15                                           |
+| API Server      | FastAPI + SSE streaming                                 |
+| Frontend        | HTML/JS vanilla                                         |
+| CLI             | Rich (panels, markdown, spinners)                       |
+| Validation      | Pydantic v2 (strict mode)                               |
+| Tracing         | LangSmith                                               |
+| Store           | InMemoryStore + StoreBackend (Deep Agents)              |
+| Code Quality    | pre-commit (Black, isort, Flake8, Pyright, Bandit)      |
 
 
 ---
@@ -158,6 +171,7 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 - Python 3.11+
 - Compte [Modal](https://modal.com) (gratuit pour commencer)
 - Cle API Anthropic ou OpenAI
+- (Optionnel) [Ollama](https://ollama.ai) installe localement pour les modeles open-source
 - (Optionnel) Cle API [LangSmith](https://smith.langchain.com)
 
 ---
@@ -191,6 +205,9 @@ LLM_FALLBACK_PROVIDER=anthropic
 LLM_FALLBACK_MODEL=claude-sonnet-4-20250514
 ANTHROPIC_API_KEY=sk-ant-...
 
+# ── Ollama (optionnel, modeles locaux) ──
+OLLAMA_BASE_URL=http://localhost:11434
+
 # ── Middleware ──
 CONTEXT_EDITING_TRIGGER=80000    # tokens seuil pour nettoyer le contexte
 TOOL_CALL_LIMIT_PER_RUN=20      # max tool calls par run
@@ -217,13 +234,15 @@ make serve
 ```
 
 
-| Feature     | Description                                                     |
-| ----------- | --------------------------------------------------------------- |
-| Streaming   | Tokens affiches un par un en temps reel                         |
-| Tool panels | Collapsibles avec spinner → check, input SQL, output table      |
-| Actions     | Boutons **Copy** / **CSV** / **JSON** sur chaque resultat       |
-| Download    | Liens de telechargement pour les exports agent                  |
-| Design      | (Fira Code, DM Mono, dark #111, borders 0.25px) |
+| Feature          | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
+| Streaming        | Tokens affiches un par un en temps reel                    |
+| Tool panels      | Collapsibles avec spinner → check, input SQL, output table |
+| Actions          | Boutons **Copy** / **CSV** / **JSON** sur chaque resultat  |
+| Download         | Liens de telechargement pour les exports agent             |
+| Provider switch  | Dropdown provider + modele, switch a chaud sans reload     |
+| Ollama detection | Modeles locaux detectes dynamiquement via API              |
+| Design           | Fira Code, DM Mono, dark theme #111, borders 0.25px       |
 
 
 ### CLI Interactif
@@ -274,19 +293,21 @@ src/
 │   └── pg.py                  # Gateway PG — QueryResult(stdout, stderr, exit_code)
 │
 ├── 🌐 server/
-│   ├── app.py                 # FastAPI (SSE, /history, /reset, /download)
+│   ├── app.py                 # FastAPI (SSE, /history, /reset, /download, /providers, /provider)
 │   └── static/
-│       └── index.html         # Frontend (Bittensor design language)
+│       └── index.html         # Frontend (dark theme, provider switch dropdown)
 │
 ├── 📡 streaming/
 │   ├── events.py              # SSE event dataclasses (text-delta, tool-call-*)
 │   └── sse_encoder.py         # LangGraph v2 → SSE (tool results exclus du texte)
 │
 └── 🔧 tools/
-    ├── schemas.py             # Pydantic v2 strict schemas (ExecuteSQLInput, etc.)
+    ├── schemas.py             # Pydantic v2 strict schemas (all tool inputs)
     ├── schema_tool.py         # @tool — introspection schema (tables, colonnes)
     ├── sql_tool.py            # @tool — execution SQL via PG gateway → markdown
-    └── export_tool.py         # @tool — export CSV/JSON avec download link
+    ├── export_tool.py         # @tool — export CSV/JSON avec download link
+    ├── chart_tool.py          # @tool — charts Seaborn dans le sandbox (PNG)
+    └── analysis_tool.py       # @tool — stats pandas (describe, corr, distributions)
 ```
 
 ---
@@ -316,6 +337,9 @@ src/
 make test      # 19 tests (tools, middleware, schemas)
 make lint      # Ruff linter
 make format    # Ruff formatter
+
+# pre-commit hooks (auto on git commit)
+pre-commit run --all-files   # Run all hooks manually
 ```
 
 ---

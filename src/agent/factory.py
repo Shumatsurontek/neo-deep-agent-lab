@@ -29,6 +29,8 @@ from src.constants import LLMProvider
 from src.middleware.logging_mw import log_tool_calls
 from src.middleware.sql_guard import sql_guard_middleware
 from src.sandbox.app import get_or_create_sandbox
+from src.tools.analysis_tool import analyze_query
+from src.tools.chart_tool import generate_chart
 from src.tools.export_tool import export_csv, export_json
 from src.tools.schema_tool import get_database_schema
 from src.tools.sql_tool import execute_sql
@@ -139,7 +141,14 @@ def create_sql_agent(
 
     return create_deep_agent(
         model=_build_model(provider, model),
-        tools=[execute_sql, get_database_schema, export_csv, export_json],
+        tools=[
+            execute_sql,
+            get_database_schema,
+            export_csv,
+            export_json,
+            generate_chart,
+            analyze_query,
+        ],
         system_prompt=SQL_AGENT_PROMPT,
         middleware=_build_middleware(),
         backend=lambda rt: StoreBackend(rt),
