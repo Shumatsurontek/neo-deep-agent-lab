@@ -134,7 +134,9 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     """
     if _agent is None:
         return StreamingResponse(
-            content=iter(['data: {"type": "error", "message": "Agent not initialized"}\n\n']),
+            content=iter(
+                ['data: {"type": "error", "message": "Agent not initialized"}\n\n']
+            ),
             media_type="text/event-stream",
         )
 
@@ -166,7 +168,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
     uvicorn.run(
         "src.server.app:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104
         port=settings.SERVER_PORT,
         reload=True,
     )

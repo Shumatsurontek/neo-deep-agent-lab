@@ -59,7 +59,7 @@ def _describe_table(table_name: str) -> str:
     query = (
         f"SELECT column_name, data_type, is_nullable, column_default "
         f"FROM information_schema.columns "
-        f"WHERE table_schema = 'public' AND table_name = '{safe_name}' "
+        f"WHERE table_schema = 'public' AND table_name = '{safe_name}' "  # nosec B608
         f"ORDER BY ordinal_position;"
     )
     result = run_query_delimited(query)

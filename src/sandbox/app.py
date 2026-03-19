@@ -34,13 +34,15 @@ def get_or_create_sandbox() -> modal.Sandbox:
     )
 
     # Run the init script that starts PG and loads the dump
-    result = _sandbox.exec("bash", "/tmp/init_pg.sh")
+    result = _sandbox.exec("bash", "/tmp/init_pg.sh")  # nosec B108
     stdout = result.stdout.read()
     stderr = result.stderr.read()
     result.wait()
 
     if result.returncode != 0:
-        raise RuntimeError(f"PostgreSQL init failed:\nstdout: {stdout}\nstderr: {stderr}")
+        raise RuntimeError(
+            f"PostgreSQL init failed:\nstdout: {stdout}\nstderr: {stderr}"
+        )
 
     print(stdout)
 

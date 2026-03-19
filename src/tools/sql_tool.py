@@ -62,7 +62,9 @@ def _format_csv_as_markdown(csv_output: str, max_rows: int) -> str:
             if i < len(col_widths):
                 col_widths[i] = max(col_widths[i], len(cell))
 
-    header_line = "| " + " | ".join(h.ljust(w) for h, w in zip(headers, col_widths)) + " |"
+    header_line = (
+        "| " + " | ".join(h.ljust(w) for h, w in zip(headers, col_widths)) + " |"
+    )
     sep_line = "| " + " | ".join("-" * w for w in col_widths) + " |"
 
     lines = [header_line, sep_line]

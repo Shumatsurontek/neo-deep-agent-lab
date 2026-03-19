@@ -7,6 +7,7 @@ Supports both sync (CLI) and async (server) invocation.
 """
 
 from langchain.agents.middleware.types import AgentMiddleware
+from langchain_core.messages import ToolMessage
 
 from src.constants import ALLOWED_SQL_KEYWORDS, FORBIDDEN_SQL_KEYWORDS
 
@@ -25,13 +26,19 @@ class SQLGuardMiddleware(AgentMiddleware):
     def wrap_tool_call(self, request, handler):
         error = self._check(request)
         if error is not None:
-            return f"Blocked: {error}"
+            return ToolMessage(
+                content=f"Blocked: {error}",
+                tool_call_id=request.tool_call["id"],
+            )
         return handler(request)
 
     async def awrap_tool_call(self, request, handler):
         error = self._check(request)
         if error is not None:
-            return f"Blocked: {error}"
+            return ToolMessage(
+                content=f"Blocked: {error}",
+                tool_call_id=request.tool_call["id"],
+            )
         return await handler(request)
 
 

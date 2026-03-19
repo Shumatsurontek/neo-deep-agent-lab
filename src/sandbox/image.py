@@ -16,6 +16,10 @@ def create_pg_image(dump_path: str = "data/neo_dump.sql") -> modal.Image:
             "postgresql-client",
             "sudo",
         )
-        .add_local_file(dump_path, "/tmp/neo_dump.sql", copy=True)
-        .add_local_file("src/sandbox/init_pg.sh", "/tmp/init_pg.sh", copy=True)
+        .add_local_file(dump_path, "/tmp/neo_dump.sql", copy=True)  # nosec B108
+        .add_local_file(
+            "src/sandbox/init_pg.sh",
+            "/tmp/init_pg.sh",  # nosec B108
+            copy=True,
+        )
     )

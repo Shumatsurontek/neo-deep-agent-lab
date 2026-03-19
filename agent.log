@@ -57,7 +57,7 @@
 2026-03-19 10:42:18,449 [neo-deep-agent-lab] [tool:end] get_database_schema | duration=699ms | output_size=1171
 2026-03-19 10:42:18,598 [neo-deep-agent-lab] [tool:end] get_database_schema | duration=851ms | output_size=734
 2026-03-19 10:42:32,672 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-19 10:42:34,279 [neo-deep-agent-lab] [tool:start] execute_sql | input={'query': "SELECT u.id,u.first_name,u.last_name,u.email,u.phone_number,u.created_at,\n       (SELECT count(*) FROM inbox_messages m WHERE m.author_id = u.id) AS messages_by_author_id,\n       (SELECT 
+2026-03-19 10:42:34,279 [neo-deep-agent-lab] [tool:start] execute_sql | input={'query': "SELECT u.id,u.first_name,u.last_name,u.email,u.phone_number,u.created_at,\n       (SELECT count(*) FROM inbox_messages m WHERE m.author_id = u.id) AS messages_by_author_id,\n       (SELECT
 2026-03-19 10:42:34,991 [neo-deep-agent-lab] [tool:end] execute_sql | duration=711ms | output_size=936
 2026-03-19 10:42:42,950 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-03-19 10:43:50,924 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
@@ -65,7 +65,7 @@
 2026-03-19 10:44:59,690 [neo-deep-agent-lab] [tool:start] execute_sql | input={'query': "WITH target_user AS (\n  SELECT id, email, phone_number\n  FROM users\n  WHERE id = '308f8373-397a-4a76-97f2-54b716798a23'\n), threads AS (\n  SELECT t.*\n  FROM inbox_threads t\n  JOIN tar
 2026-03-19 10:45:00,439 [neo-deep-agent-lab] [tool:end] execute_sql | duration=749ms | output_size=44534
 2026-03-19 10:45:07,870 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-19 10:45:10,132 [neo-deep-agent-lab] [tool:start] execute_sql | input={'query': "SELECT count(DISTINCT th.id) AS thread_count, count(m.id) AS message_count,\n       min(th.created_at) AS first_thread_at, max(th.created_at) AS last_thread_at\nFROM inbox_threads th\nLEFT 
+2026-03-19 10:45:10,132 [neo-deep-agent-lab] [tool:start] execute_sql | input={'query': "SELECT count(DISTINCT th.id) AS thread_count, count(m.id) AS message_count,\n       min(th.created_at) AS first_thread_at, max(th.created_at) AS last_thread_at\nFROM inbox_threads th\nLEFT
 2026-03-19 10:45:10,922 [neo-deep-agent-lab] [tool:end] execute_sql | duration=789ms | output_size=366
 2026-03-19 10:45:19,438 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-03-19 10:45:42,380 [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"

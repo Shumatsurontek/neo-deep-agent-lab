@@ -115,14 +115,18 @@ async def encode_stream_async(
         yield done_event().to_sse(), ""
 
 
-def _map_chunk_to_events(chunk: dict[str, Any], acc: _ToolArgsAccumulator) -> list[SSEEvent]:
+def _map_chunk_to_events(
+    chunk: dict[str, Any], acc: _ToolArgsAccumulator
+) -> list[SSEEvent]:
     """Map a single LangGraph v2 chunk to SSE events."""
     events: list[SSEEvent] = []
     chunk_type = chunk.get("type", "")
     data = chunk.get("data")
 
     if chunk_type == "messages":
-        token, metadata = data if isinstance(data, (list, tuple)) and len(data) == 2 else (data, {})
+        token, metadata = (
+            data if isinstance(data, (list, tuple)) and len(data) == 2 else (data, {})
+        )
         token_type = getattr(token, "type", "")
 
         # Tool results — routed ONLY to tool-call-end (never text-delta)
@@ -150,6 +154,8 @@ def _map_chunk_to_events(chunk: dict[str, Any], acc: _ToolArgsAccumulator) -> li
                     if isinstance(tc, dict):
                         name = acc.on_chunk(tc)
                         if name:
-                            events.append(tool_call_start(tool_name=name, tool_input={}))
+                            events.append(
+                                tool_call_start(tool_name=name, tool_input={})
+                            )
 
     return events

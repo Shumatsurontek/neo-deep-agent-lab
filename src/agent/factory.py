@@ -20,6 +20,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.memory import InMemoryStore
+from pydantic import SecretStr
 
 from src.agent.prompts import SQL_AGENT_PROMPT
 from src.config import settings
@@ -38,15 +39,23 @@ store = InMemoryStore()
 checkpointer = MemorySaver()
 
 
-def _build_model(provider: str | None = None, model: str | None = None) -> BaseChatModel:
+def _build_model(
+    provider: str | None = None, model: str | None = None
+) -> BaseChatModel:
     """Build an LLM from provider/model strings (defaults to settings)."""
     p = (provider or settings.LLM_PROVIDER).lower()
     m = model or settings.LLM_MODEL
 
     if p == LLMProvider.OPENAI:
-        return ChatOpenAI(model=m, api_key=settings.OPENAI_API_KEY)
+        return ChatOpenAI(model=m, api_key=SecretStr(settings.OPENAI_API_KEY))
 
-    return ChatAnthropic(model=m, api_key=settings.ANTHROPIC_API_KEY, max_retries=6)
+    return ChatAnthropic(
+        model_name=m,
+        api_key=SecretStr(settings.ANTHROPIC_API_KEY),
+        max_retries=6,
+        timeout=None,
+        stop=None,
+    )
 
 
 def _build_middleware() -> list:
@@ -97,7 +106,9 @@ def _build_middleware() -> list:
 
     # Optional model fallback (if configured)
     if settings.LLM_FALLBACK_MODEL and settings.LLM_FALLBACK_PROVIDER:
-        fallback = _build_model(settings.LLM_FALLBACK_PROVIDER, settings.LLM_FALLBACK_MODEL)
+        fallback = _build_model(
+            settings.LLM_FALLBACK_PROVIDER, settings.LLM_FALLBACK_MODEL
+        )
         stack.append(ModelFallbackMiddleware(fallback))
         logger.info(
             "Model fallback enabled: %s:%s",

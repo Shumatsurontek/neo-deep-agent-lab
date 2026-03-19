@@ -1,6 +1,10 @@
 from pydantic_settings import BaseSettings
 
-from src.constants import DEFAULT_MAX_RESULT_ROWS, DEFAULT_SERVER_PORT, DEFAULT_SQL_TIMEOUT_MS
+from src.constants import (
+    DEFAULT_MAX_RESULT_ROWS,
+    DEFAULT_SERVER_PORT,
+    DEFAULT_SQL_TIMEOUT_MS,
+)
 
 
 class Settings(BaseSettings):
@@ -14,7 +18,9 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = ""
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-5-mini-2025-08-07"
-    LLM_FALLBACK_MODEL: str = "gpt-4.1-mini"  # e.g. "claude-sonnet-4-20250514" or "gpt-4.1-mini"
+    LLM_FALLBACK_MODEL: str = (
+        "gpt-4.1-mini"  # e.g. "claude-sonnet-4-20250514" or "gpt-4.1-mini"
+    )
     LLM_FALLBACK_PROVIDER: str = "openai"  # "anthropic" or "openai"
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""

@@ -1,9 +1,9 @@
 
 
-# 🧬 Neo Deep Agent Lab  
+# 🧬 Neo Deep Agent Lab
 Conversational SQL Agent with Sandboxed Execution & Deep Agents Middleware
 
-**Arthur Edmond** · LLM Engineer @ [Swapn](https://swapn.com)  
+**Arthur Edmond** · LLM Engineer @ [Swapn](https://swapn.com)
 *A production-grade SQL agent powered by LangChain Deep Agents, executing queries in an isolated Modal sandbox with 7-layer middleware defense*
 
 
@@ -320,6 +320,5 @@ make format    # Ruff formatter
 
 ---
 
-**Arthur Edmond** · [Swapn](https://swapn.com)  
+**Arthur Edmond** · [Swapn](https://swapn.com)
 Built with LangChain Deep Agents, Modal, and an obsession for clean middleware stacks
-
