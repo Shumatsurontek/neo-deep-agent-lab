@@ -20,7 +20,7 @@ Conversational SQL Agent with Sandboxed Execution & Deep Agents Middleware
 
 ```mermaid
 graph LR
-    U[Utilisateur] --> F["Frontend<br/>(Bittensor UI)"]
+    U[Utilisateur] --> F["Frontend<br/>"]
     U --> C[CLI Rich]
     F --> S[FastAPI :8080]
     C --> A[Deep Agent<br/>LangGraph]
