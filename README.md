@@ -12,7 +12,7 @@ Conversational SQL Agent with Sandboxed Execution & Deep Agents Middleware
 
 ## ⚡ TL;DR
 
-> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, tool retry, context editing, model fallback...) assurent securite et resilience. Frontend **Bittensor-style** avec streaming SSE, tool panels interactifs, et export CSV/JSON.
+> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, tool retry, context editing, model fallback...) assurent securite et resilience. Frontend avec streaming SSE, tool panels interactifs, et export CSV/JSON.
 
 ---
 
@@ -144,7 +144,7 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 | Sandbox         | Modal (conteneur isole, PG15, read-only)               |
 | Base de donnees | PostgreSQL 15                                          |
 | API Server      | FastAPI + SSE streaming                                |
-| Frontend        | HTML/JS vanilla (Bittensor design language)            |
+| Frontend        | HTML/JS vanilla            |
 | CLI             | Rich (panels, markdown, spinners)                      |
 | Validation      | Pydantic v2 (strict mode)                              |
 | Tracing         | LangSmith                                              |
@@ -223,7 +223,7 @@ make serve
 | Tool panels | Collapsibles avec spinner → check, input SQL, output table      |
 | Actions     | Boutons **Copy** / **CSV** / **JSON** sur chaque resultat       |
 | Download    | Liens de telechargement pour les exports agent                  |
-| Design      | Bittensor-style (Fira Code, DM Mono, dark #111, borders 0.25px) |
+| Design      | (Fira Code, DM Mono, dark #111, borders 0.25px) |
 
 
 ### CLI Interactif
