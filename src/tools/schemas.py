@@ -34,3 +34,21 @@ class GetDatabaseSchemaInput(BaseModel):
             "Name of the table to describe. If omitted, lists all tables in the database."
         ),
     )
+
+
+class ExportResultInput(BaseModel):
+    """Input schema for the export_csv / export_json tools."""
+
+    model_config = {"strict": True}
+
+    query: str = Field(
+        description="The SELECT query whose results should be exported.",
+        min_length=1,
+    )
+    filename: str = Field(
+        default="export",
+        description=(
+            "Base filename (without extension). "
+            "Use a short descriptive name like 'users_arthur' or 'inbox_messages'."
+        ),
+    )

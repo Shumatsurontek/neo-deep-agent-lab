@@ -4,108 +4,548 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neo Deep Agent Lab</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&family=Inter:wght@200;300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; }
-        #chat { scroll-behavior: smooth; }
-        #chat::-webkit-scrollbar { width: 6px; }
-        #chat::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        :root {
+            --bg-default: #111;
+            --bg-paper: #050404;
+            --bg-secondary: #1c1c1c;
+            --bg-elevated: #222;
+            --text-primary: #e0e0e0;
+            --text-secondary: #767676;
+            --text-bright: #f2f2f2;
+            --border-primary: #292929;
+            --border-secondary: #3a3a3a;
+            --accent-purple: #a77dff;
+            --accent-green: #8ae06c;
+            --accent-red: #f56868;
+            --accent-yellow: #f1df38;
+            --accent-rose: #d15168;
+            --accent-lime: #e9f4a4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 200;
+            line-height: 180%;
+            letter-spacing: 0.03em;
+            background: var(--bg-default);
+            color: var(--text-primary);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* ── HEADER ────────────────────────────── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 32px;
+            border-bottom: 0.5px solid var(--border-primary);
+            background: var(--bg-default);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-group { display: flex; align-items: center; gap: 16px; }
+
+        .logo-mark {
+            width: 28px; height: 28px;
+            border: 0.5px solid var(--text-secondary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px; font-weight: 400;
+            color: var(--text-bright);
+        }
+
+        .logo-text {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-bright);
+        }
+
+        .logo-sub {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+        }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            opacity: 0.7;
+        }
+        .status-dot.streaming { background: var(--accent-yellow); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 50% { opacity: 0.3; } }
+
+        .status-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+        }
+
+        .btn-reset {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: transparent;
+            border: 0.5px solid var(--border-secondary);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        .btn-reset:hover { background: var(--text-bright); color: var(--bg-default); }
+
+        /* ── CHAT AREA ─────────────────────────── */
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            scroll-behavior: smooth;
+        }
+
+        .welcome {
+            text-align: center;
+            padding: 80px 0;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        .welcome h2 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            font-size: 18px;
+            color: var(--text-bright);
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+        .welcome p {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            line-height: 180%;
+        }
+
+        /* Messages */
+        .msg-user {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+        }
+        .msg-user-bubble {
+            max-width: 520px;
+            background: var(--bg-secondary);
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 5px;
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 300;
+            color: var(--text-bright);
+            line-height: 160%;
+        }
+
+        .msg-assistant {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 32px;
+        }
+        .msg-group {
+            display: flex;
+            gap: 16px;
+            max-width: 680px;
+            width: 100%;
+        }
+        .avatar {
+            width: 24px; height: 24px;
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'DM Mono', monospace;
+            font-size: 9px; font-weight: 400;
+            color: var(--accent-purple);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .msg-content { flex: 1; min-width: 0; }
+        .msg-steps { margin-bottom: 8px; }
+
+        .msg-text {
+            font-size: 14px;
+            font-weight: 200;
+            line-height: 180%;
+            color: var(--text-primary);
+        }
+        .msg-text strong { font-weight: 500; color: var(--text-bright); }
+        .msg-text code {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            background: var(--bg-secondary);
+            padding: 1px 6px;
+            border-radius: 3px;
+            color: var(--accent-purple);
+        }
+        .msg-text h2 { font-size: 15px; font-weight: 400; color: var(--text-bright); margin: 16px 0 6px; }
+        .msg-text h3 { font-size: 14px; font-weight: 400; color: var(--text-bright); margin: 12px 0 4px; }
+        .msg-text ul { margin: 4px 0; padding-left: 16px; }
+        .msg-text li { color: var(--text-primary); margin: 2px 0; }
+
         .typing::after {
             content: '';
             display: inline-block;
-            width: 6px; height: 6px;
-            background: #9ca3af;
+            width: 5px; height: 5px;
+            background: var(--text-secondary);
             border-radius: 50%;
-            animation: blink 1s infinite;
+            animation: pulse 1s infinite;
             margin-left: 4px;
             vertical-align: middle;
         }
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner { animation: spin 1s linear infinite; }
-        pre { white-space: pre-wrap; word-wrap: break-word; }
 
-        /* Tool step panels */
-        .tool-step { border-left: 2px solid #374151; margin: 8px 0; }
-        .tool-step.running { border-left-color: #f59e0b; }
-        .tool-step.done { border-left-color: #10b981; }
-        .tool-step summary { cursor: pointer; list-style: none; user-select: none; }
+        /* ── TOOL STEPS ────────────────────────── */
+        .tool-step {
+            border-top: 0.5px solid var(--border-primary);
+            margin: 6px 0;
+            background: transparent;
+            transition: border-color 0.3s;
+        }
+        .tool-step.running { border-top-color: var(--accent-yellow); }
+        .tool-step.done { border-top-color: var(--accent-green); }
+        .tool-step.error { border-top-color: var(--accent-red); }
+
+        .tool-step summary {
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            font-weight: 400;
+        }
         .tool-step summary::-webkit-details-marker { display: none; }
         .tool-step summary::before {
-            content: '\25B6'; margin-right: 6px; font-size: 0.55em;
-            transition: transform 0.2s; display: inline-block; vertical-align: middle;
+            content: '\25B8';
+            font-size: 10px;
+            transition: transform 0.2s;
+            display: inline-block;
+            color: var(--text-secondary);
         }
         .tool-step[open] summary::before { transform: rotate(90deg); }
 
-        /* Markdown tables */
-        .md-table { border-collapse: collapse; font-size: 0.75rem; width: 100%; }
-        .md-table th, .md-table td {
-            border: 1px solid #374151; padding: 3px 8px; text-align: left;
-        }
-        .md-table th { background: #1f2937; font-weight: 600; color: #9ca3af; }
-        .md-table td { color: #d1d5db; }
-        .md-table tr:hover td { background: #111827; }
+        .tool-name { text-transform: uppercase; letter-spacing: 0.06em; }
+        .tool-name.running { color: var(--accent-yellow); }
+        .tool-name.done { color: var(--accent-green); }
 
-        /* Assistant message group */
-        .msg-group { max-width: 56rem; }
-        .msg-text p { margin: 0.25em 0; }
-        .msg-text p:first-child { margin-top: 0; }
+        .tool-badge {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .tool-body { padding: 0 0 12px 0; }
+
+        .tool-section-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 9px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .tool-query {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 300;
+            color: var(--accent-purple);
+            background: var(--bg-paper);
+            border: 0.25px solid var(--border-primary);
+            border-radius: 4px;
+            padding: 10px 14px;
+            line-height: 160%;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Result table */
+        .result-wrap {
+            overflow: auto;
+            max-height: 280px;
+            border: 0.25px solid var(--border-primary);
+            border-radius: 4px;
+        }
+        .result-table {
+            border-collapse: collapse;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            font-weight: 300;
+            width: 100%;
+        }
+        .result-table th {
+            background: var(--bg-paper);
+            font-family: 'Fira Code', monospace;
+            font-weight: 400;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 0.5px solid var(--border-primary);
+            position: sticky;
+            top: 0;
+        }
+        .result-table td {
+            padding: 6px 12px;
+            color: var(--text-primary);
+            border-bottom: 0.25px solid var(--border-primary);
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .result-table tr:hover td { background: rgba(167, 125, 255, 0.04); }
+
+        /* Tool action buttons */
+        .tool-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+        .tool-action-btn {
+            font-family: 'Fira Code', monospace;
+            font-size: 9px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 5px;
+            color: var(--text-secondary);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        .tool-action-btn:hover { background: var(--text-bright); color: var(--bg-default); }
+        .tool-action-btn.copied { color: var(--accent-green); border-color: var(--accent-green); }
+
+        /* Download card */
+        .dl-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 5px;
+            text-decoration: none;
+            color: var(--text-bright);
+            transition: all 0.5s ease;
+            margin: 4px 0;
+        }
+        .dl-card:hover { background: var(--text-bright); color: var(--bg-default); }
+        .dl-card .dl-icon { opacity: 0.6; }
+        .dl-card:hover .dl-icon { opacity: 1; }
+        .dl-card-name {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            font-weight: 400;
+        }
+        .dl-card-meta {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Markdown table (in text) */
+        .md-table { border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11px; width: 100%; margin: 8px 0; }
+        .md-table th, .md-table td { border-bottom: 0.25px solid var(--border-primary); padding: 4px 10px; text-align: left; }
+        .md-table th { font-family: 'Fira Code', monospace; font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+        .md-table td { color: var(--text-primary); font-weight: 300; }
+
+        /* Inline download link in text */
+        .dl-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 5px;
+            text-decoration: none;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: var(--text-bright);
+            transition: all 0.5s ease;
+            margin: 2px 0;
+        }
+        .dl-inline:hover { background: var(--text-bright); color: var(--bg-default); }
+
+        /* Error */
+        .msg-error {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: var(--accent-red);
+            border: 0.5px solid var(--accent-red);
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            opacity: 0.8;
+        }
+
+        /* ── FOOTER / INPUT ────────────────────── */
+        footer {
+            padding: 20px 32px;
+            border-top: 0.5px solid var(--border-primary);
+            background: var(--bg-default);
+        }
+        .input-wrap {
+            display: flex;
+            gap: 12px;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+        .input-field {
+            flex: 1;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 200;
+            background: transparent;
+            border: 0.5px solid var(--border-secondary);
+            border-radius: 5px;
+            padding: 12px 18px;
+            color: var(--text-bright);
+            outline: none;
+            transition: border-color 0.3s;
+            letter-spacing: 0.02em;
+        }
+        .input-field::placeholder { color: var(--text-secondary); font-weight: 200; }
+        .input-field:focus { border-color: var(--text-secondary); }
+
+        .btn-send {
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: var(--bg-paper);
+            border: none;
+            border-radius: 5px;
+            color: var(--text-bright);
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        .btn-send:hover { background: var(--text-bright); color: var(--bg-default); }
+        .btn-send:disabled { opacity: 0.4; pointer-events: none; }
+
+        /* ── SPINNER ───────────────────────────── */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-icon { animation: spin 1.2s linear infinite; }
+
+        /* ── RESPONSIVE ────────────────────────── */
+        @media (max-width: 700px) {
+            header { padding: 16px 20px; }
+            #chat { padding: 20px 16px; }
+            footer { padding: 16px 20px; }
+            .msg-group { max-width: 100%; }
+            .msg-user-bubble { max-width: 85%; }
+        }
+
+        /* fadeIn for messages */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 h-screen flex flex-col">
+<body>
 
     <!-- Header -->
-    <header class="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm">N</div>
-            <h1 class="text-lg font-semibold">Neo Deep Agent Lab</h1>
-            <span class="text-xs text-gray-500 hidden sm:inline">SQL Agent + Modal Sandbox</span>
+    <header>
+        <div class="logo-group">
+            <div class="logo-mark">N</div>
+            <div>
+                <div class="logo-text">Neo Deep Agent</div>
+                <div class="logo-sub">SQL sandbox // modal</div>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <span id="status" class="text-xs text-green-400">Ready</span>
-            <button onclick="resetChat()" class="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded-md border border-gray-700 transition">
-                Reset
-            </button>
+        <div class="header-right">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-label" id="statusLabel">ready</span>
+            <button class="btn-reset" onclick="resetChat()">reset</button>
         </div>
     </header>
 
     <!-- Chat -->
-    <main id="chat" class="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-        <div class="text-center text-gray-500 text-sm py-8">
-            Pose une question sur la base de donnees Neo.<br>
-            <span class="text-xs text-gray-600">L'agent genere du SQL, l'execute dans un sandbox isole, et repond en francais.</span>
+    <main id="chat">
+        <div class="welcome">
+            <h2>Deep Agent Lab</h2>
+            <p>
+                Interroge la base de donnees Neo en langage naturel.<br>
+                L'agent genere du SQL, l'execute dans un sandbox isole,<br>
+                et repond en francais.
+            </p>
         </div>
     </main>
 
     <!-- Input -->
-    <footer class="shrink-0 px-4 py-3 bg-gray-900 border-t border-gray-800">
-        <form onsubmit="sendMessage(event)" class="flex gap-3 max-w-4xl mx-auto">
+    <footer>
+        <form onsubmit="sendMessage(event)" class="input-wrap">
             <input
                 id="input"
                 type="text"
-                placeholder="Ex: Combien d'agents sont configures ?"
+                placeholder="Pose ta question..."
                 autocomplete="off"
-                class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition placeholder-gray-500"
+                class="input-field"
             />
-            <button
-                id="sendBtn"
-                type="submit"
-                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Envoyer
-            </button>
+            <button id="sendBtn" type="submit" class="btn-send">Envoyer</button>
         </form>
     </footer>
 
 <script>
 const chat = document.getElementById('chat');
-const input = document.getElementById('input');
+const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
+const statusDot = document.getElementById('statusDot');
+const statusLabel = document.getElementById('statusLabel');
 let isStreaming = false;
 
-/* ── History ─────────────────────────────────── */
+function setStatus(state) {
+    statusDot.className = state === 'streaming' ? 'status-dot streaming' : 'status-dot';
+    statusLabel.textContent = state === 'streaming' ? 'streaming' : 'ready';
+}
 
+/* ── History ─────────────────────────────────── */
 async function loadHistory() {
     try {
         const res = await fetch('/history');
@@ -115,57 +555,47 @@ async function loadHistory() {
             for (const msg of data.messages) {
                 if (msg.role === 'user') appendUserBubble(msg.content);
                 else if (msg.role === 'assistant') {
-                    const group = createAssistantGroup();
-                    group.textEl.innerHTML = renderMarkdown(msg.content);
+                    const g = createAssistantGroup();
+                    g.textEl.innerHTML = renderMarkdown(msg.content);
                 }
             }
             scrollToBottom();
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) { /* silent */ }
 }
 
 /* ── DOM builders ────────────────────────────── */
-
 function appendUserBubble(text) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'flex justify-end';
-    wrapper.innerHTML = `
-        <div class="max-w-2xl bg-blue-600 rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">
-            ${escapeHtml(text)}
-        </div>`;
-    chat.appendChild(wrapper);
+    const d = document.createElement('div');
+    d.className = 'msg-user fade-in';
+    d.innerHTML = `<div class="msg-user-bubble">${escapeHtml(text)}</div>`;
+    chat.appendChild(d);
     scrollToBottom();
 }
 
 function createAssistantGroup() {
-    // Outer wrapper: left-aligned
     const outer = document.createElement('div');
-    outer.className = 'flex justify-start';
+    outer.className = 'msg-assistant fade-in';
 
-    // Message group: contains avatar + content column
     const group = document.createElement('div');
-    group.className = 'msg-group flex gap-3 max-w-3xl';
+    group.className = 'msg-group';
 
-    // Avatar
-    const avatar = document.createElement('div');
-    avatar.className = 'w-7 h-7 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-blue-400 shrink-0 mt-0.5';
-    avatar.textContent = 'A';
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.textContent = 'A';
 
-    // Content column
     const content = document.createElement('div');
-    content.className = 'flex-1 min-w-0';
+    content.className = 'msg-content';
 
-    // Text container (for streaming text)
-    const textEl = document.createElement('div');
-    textEl.className = 'msg-text text-sm leading-relaxed text-gray-200';
-
-    // Steps container (tool panels go here, inline)
     const stepsEl = document.createElement('div');
     stepsEl.className = 'msg-steps';
 
+    const textEl = document.createElement('div');
+    textEl.className = 'msg-text';
+
     content.appendChild(stepsEl);
     content.appendChild(textEl);
-    group.appendChild(avatar);
+    group.appendChild(av);
     group.appendChild(content);
     outer.appendChild(group);
     chat.appendChild(outer);
@@ -174,23 +604,21 @@ function createAssistantGroup() {
     return { outer, textEl, stepsEl };
 }
 
+/* ── Tool steps ──────────────────────────────── */
 function createToolStep(toolName, stepsEl) {
     const details = document.createElement('details');
-    details.className = 'tool-step running rounded-md bg-gray-900/60 px-3 py-1.5 text-xs';
+    details.className = 'tool-step running';
 
     const summary = document.createElement('summary');
-    summary.className = 'flex items-center gap-2 py-0.5';
     summary.innerHTML = `
-        <svg class="w-3 h-3 text-amber-400 spinner shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <svg class="spinner-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--accent-yellow)">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
-        <span class="font-medium text-amber-400">${escapeHtml(toolName)}</span>
-        <span class="tool-badge text-gray-600 ml-auto">en cours...</span>`;
+        <span class="tool-name running">${escapeHtml(toolName)}</span>
+        <span class="tool-badge">running</span>`;
 
     const body = document.createElement('div');
-    body.className = 'tool-body mt-1.5 mb-1';
+    body.className = 'tool-body';
 
     details.appendChild(summary);
     details.appendChild(body);
@@ -202,85 +630,200 @@ function createToolStep(toolName, stepsEl) {
 
 function finalizeToolStep(step, toolOutput, toolInput) {
     const { details, summary, body } = step;
+    details._rawOutput = toolOutput;
+    details._rawInput = toolInput;
 
-    // Styling: running → done
     details.classList.remove('running');
     details.classList.add('done');
 
-    // Icon: spinner → check
-    const svg = summary.querySelector('svg');
-    if (svg) {
-        svg.classList.remove('spinner');
-        svg.outerHTML = `
-            <svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>`;
+    const parsed = parseTableData(toolOutput);
+
+    // Update summary
+    const icon = summary.querySelector('svg');
+    if (icon) {
+        icon.classList.remove('spinner-icon');
+        icon.outerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--accent-green)">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>`;
     }
 
-    // Label color
-    const label = summary.querySelector('.font-medium');
-    if (label) { label.classList.remove('text-amber-400'); label.classList.add('text-emerald-400'); }
+    const nameEl = summary.querySelector('.tool-name');
+    if (nameEl) { nameEl.classList.remove('running'); nameEl.classList.add('done'); }
 
-    // Badge
     const badge = summary.querySelector('.tool-badge');
     if (badge) {
-        const len = toolOutput.length;
-        badge.textContent = len > 100 ? `${(len / 1024).toFixed(1)} KB` : 'ok';
-        badge.classList.remove('text-gray-600');
-        badge.classList.add('text-gray-500');
+        badge.textContent = parsed ? `${parsed.rows.length} row${parsed.rows.length !== 1 ? 's' : ''}` : `${toolOutput.length} B`;
     }
 
-    // Body: input + output
+    // Build body
     let html = '';
 
-    // Input section
     if (toolInput && typeof toolInput === 'object' && Object.keys(toolInput).length > 0) {
         const display = toolInput.query || toolInput.table_name || JSON.stringify(toolInput, null, 2);
-        html += `<div class="mb-2">
-            <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Requete</div>
-            <pre class="text-blue-300/90 bg-gray-950/60 rounded px-2 py-1.5 text-[11px] leading-relaxed overflow-x-auto">${escapeHtml(display)}</pre>
+        html += `<div style="margin-bottom:10px">
+            <div class="tool-section-label">input</div>
+            <pre class="tool-query">${escapeHtml(display)}</pre>
         </div>`;
     }
 
-    // Output section
-    const truncated = toolOutput.length > 3000 ? toolOutput.slice(0, 3000) + '\n...(tronque)' : toolOutput;
-
-    if (looksLikeTable(truncated)) {
+    if (parsed) {
         html += `<div>
-            <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Resultat</div>
-            <div class="overflow-x-auto">${renderPsqlTable(truncated)}</div>
+            <div class="tool-section-label">output</div>
+            <div class="result-wrap">${renderResultTable(parsed)}</div>
+            <div class="tool-actions">${actionButtons()}</div>
         </div>`;
+    } else if (toolOutput.includes('/download/')) {
+        const dlMatch = toolOutput.match(/\/download\/([a-f0-9-]+)\/([^\s]+)/);
+        const rowMatch = toolOutput.match(/(\d+) lignes/);
+        if (dlMatch) {
+            html += `<div style="padding:4px 0">
+                <a href="/download/${dlMatch[1]}/${dlMatch[2]}" download class="dl-card">
+                    <svg class="dl-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span class="dl-card-name">${escapeHtml(dlMatch[2])}</span>
+                    ${rowMatch ? `<span class="dl-card-meta">${rowMatch[1]} rows</span>` : ''}
+                </a>
+            </div>`;
+        }
     } else {
+        const trunc = toolOutput.length > 3000 ? toolOutput.slice(0, 3000) + '\n...' : toolOutput;
         html += `<div>
-            <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Resultat</div>
-            <pre class="text-gray-400 bg-gray-950/40 rounded px-2 py-1.5 text-[11px] overflow-x-auto">${escapeHtml(truncated)}</pre>
+            <div class="tool-section-label">output</div>
+            <pre class="tool-query" style="color:var(--text-primary);max-height:240px;overflow-y:auto">${escapeHtml(trunc)}</pre>
+            <div class="tool-actions">${actionButtons()}</div>
         </div>`;
     }
 
     body.innerHTML = html;
+
+    const copyBtn = body.querySelector('.btn-copy');
+    const csvBtn = body.querySelector('.btn-csv');
+    const jsonBtn = body.querySelector('.btn-json');
+    if (copyBtn) copyBtn.onclick = () => copyClip(copyBtn, toolOutput);
+    if (csvBtn) csvBtn.onclick = () => downloadCSV(parsed || toolOutput, toolInput);
+    if (jsonBtn) jsonBtn.onclick = () => downloadJSON(parsed || toolOutput, toolInput);
+}
+
+function actionButtons() {
+    return `
+        <button class="tool-action-btn btn-copy">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            copy
+        </button>
+        <button class="tool-action-btn btn-csv">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            csv
+        </button>
+        <button class="tool-action-btn btn-json">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            json
+        </button>`;
+}
+
+/* ── Table parsing & rendering ───────────────── */
+function parseTableData(text) {
+    if (!text || typeof text !== 'string') return null;
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return null;
+
+    if (lines[0].includes('|')) {
+        const parseRow = r => r.split('|').map(c => c.trim()).filter(c => c !== '');
+        const headers = parseRow(lines[0]);
+        if (!headers.length) return null;
+        let start = 1;
+        if (lines[1] && /^[\s|+\-:=]+$/.test(lines[1])) start = 2;
+        const rows = [];
+        for (let i = start; i < lines.length; i++) {
+            if (/^[\s|+\-:=]+$/.test(lines[i])) continue;
+            if (/^\*?\(?\d+ (?:total )?rows?\)?/.test(lines[i].trim())) continue;
+            const cells = parseRow(lines[i]);
+            if (cells.length) rows.push(cells);
+        }
+        return rows.length ? { headers, rows } : null;
+    }
+    if (lines[0].includes(',') && lines[0].split(',').length >= 2) {
+        const headers = lines[0].split(',').map(c => c.trim());
+        const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim())).filter(r => r.length);
+        return rows.length ? { headers, rows } : null;
+    }
+    return null;
+}
+
+function renderResultTable(data) {
+    let h = '<table class="result-table"><thead><tr>';
+    for (const col of data.headers) h += `<th>${escapeHtml(col)}</th>`;
+    h += '</tr></thead><tbody>';
+    for (const row of data.rows) {
+        h += '<tr>';
+        for (let i = 0; i < data.headers.length; i++) {
+            const c = row[i] || '';
+            const d = c.length > 100 ? c.slice(0, 100) + '...' : c;
+            h += `<td title="${escapeHtml(c)}">${escapeHtml(d)}</td>`;
+        }
+        h += '</tr>';
+    }
+    return h + '</tbody></table>';
+}
+
+/* ── Download & Copy ─────────────────────────── */
+function copyClip(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        const orig = btn.innerHTML;
+        btn.textContent = 'copied';
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 1200);
+    });
+}
+
+function downloadCSV(data, input) {
+    let csv;
+    if (data?.headers && data?.rows) {
+        const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+        csv = data.headers.map(esc).join(',') + '\n' + data.rows.map(r => r.map(c => esc(c || '')).join(',')).join('\n');
+    } else { csv = typeof data === 'string' ? data : JSON.stringify(data); }
+    dl(csv, fname(input, 'csv'), 'text/csv');
+}
+
+function downloadJSON(data, input) {
+    let json;
+    if (data?.headers && data?.rows) {
+        json = JSON.stringify(data.rows.map(r => { const o = {}; data.headers.forEach((h, i) => o[h] = r[i] || null); return o; }), null, 2);
+    } else { json = typeof data === 'string' ? JSON.stringify({ result: data }, null, 2) : JSON.stringify(data, null, 2); }
+    dl(json, fname(input, 'json'), 'application/json');
+}
+
+function fname(input, ext) {
+    const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    let n = 'result';
+    if (input?.table_name) n = input.table_name;
+    else if (input?.query) { const m = input.query.match(/(?:FROM|JOIN)\s+(\w+)/i); if (m) n = m[1]; }
+    return `${n}_${ts}.${ext}`;
+}
+
+function dl(content, filename, mime) {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 /* ── Streaming ───────────────────────────────── */
-
 async function sendMessage(e) {
     e.preventDefault();
-    const text = input.value.trim();
+    const text = inputEl.value.trim();
     if (!text || isStreaming) return;
 
     isStreaming = true;
     sendBtn.disabled = true;
-    input.value = '';
-    statusEl.textContent = 'Streaming...';
-    statusEl.className = 'text-xs text-amber-400';
+    inputEl.value = '';
+    setStatus('streaming');
 
     appendUserBubble(text);
-    const group = createAssistantGroup();
-    group.textEl.classList.add('typing');
+    const g = createAssistantGroup();
+    g.textEl.classList.add('typing');
 
     let fullText = '';
-    let activeTools = {};  // key → step (unique per tool call)
+    let activeTools = {};
     let toolIdx = 0;
-    let lastToolKey = null;  // track last started tool for end matching
 
     try {
         const res = await fetch('/chat', {
@@ -288,7 +831,6 @@ async function sendMessage(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text }),
         });
-
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -296,183 +838,97 @@ async function sendMessage(e) {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n\n');
             buffer = lines.pop() || '';
 
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
-                let event;
-                try { event = JSON.parse(line.slice(6)); } catch { continue; }
+                let ev;
+                try { ev = JSON.parse(line.slice(6)); } catch { continue; }
 
-                switch (event.type) {
+                switch (ev.type) {
                     case 'text-delta':
-                        fullText += event.content;
-                        group.textEl.innerHTML = renderMarkdown(fullText);
+                        fullText += ev.content;
+                        g.textEl.innerHTML = renderMarkdown(fullText);
                         scrollToBottom();
                         break;
-
                     case 'tool-call-start': {
-                        const name = event.tool_name;
-                        const key = name + '_' + (toolIdx++);
-                        const step = createToolStep(name, group.stepsEl);
-                        activeTools[key] = { step, name };
-                        lastToolKey = key;
-
-                        // Show initial input if available
-                        if (event.tool_input && Object.keys(event.tool_input).length > 0) {
-                            const q = event.tool_input.query || event.tool_input.table_name || JSON.stringify(event.tool_input, null, 2);
-                            step.body.innerHTML = `<pre class="text-blue-300/70 text-[11px]">${escapeHtml(q)}</pre>
-                                <div class="text-gray-600 italic mt-1">Execution...</div>`;
-                        }
+                        const key = ev.tool_name + '_' + (toolIdx++);
+                        activeTools[key] = { step: createToolStep(ev.tool_name, g.stepsEl), name: ev.tool_name };
                         break;
                     }
-
                     case 'tool-call-end': {
-                        const name = event.tool_name;
-                        // Find the matching active tool (FIFO by name)
-                        const matchKey = Object.keys(activeTools).find(k => activeTools[k].name === name);
-                        if (matchKey) {
-                            finalizeToolStep(activeTools[matchKey].step, event.tool_output || '', event.tool_input || null);
-                            delete activeTools[matchKey];
-                        }
+                        const mk = Object.keys(activeTools).find(k => activeTools[k].name === ev.tool_name);
+                        if (mk) { finalizeToolStep(activeTools[mk].step, ev.tool_output || '', ev.tool_input || null); delete activeTools[mk]; }
                         break;
                     }
-
                     case 'error':
-                        group.textEl.innerHTML += `<div class="text-red-400 mt-2 text-xs border border-red-900 rounded px-3 py-2 bg-red-950/30">Erreur: ${escapeHtml(event.message)}</div>`;
+                        g.textEl.innerHTML += `<div class="msg-error">${escapeHtml(ev.message)}</div>`;
                         break;
-
-                    case 'done':
-                        break;
+                    case 'done': break;
                 }
             }
         }
     } catch (err) {
-        group.textEl.innerHTML += `<div class="text-red-400 mt-2 text-xs">Erreur reseau: ${escapeHtml(err.message)}</div>`;
+        g.textEl.innerHTML += `<div class="msg-error">network: ${escapeHtml(err.message)}</div>`;
     }
 
-    // Finalize pending tool panels
-    for (const [, entry] of Object.entries(activeTools)) {
-        finalizeToolStep(entry.step, '(pas de resultat)', null);
-    }
+    for (const [, entry] of Object.entries(activeTools)) finalizeToolStep(entry.step, '(no result)', null);
 
-    group.textEl.classList.remove('typing');
+    g.textEl.classList.remove('typing');
     isStreaming = false;
     sendBtn.disabled = false;
-    statusEl.textContent = 'Ready';
-    statusEl.className = 'text-xs text-green-400';
-    input.focus();
+    setStatus('ready');
+    inputEl.focus();
 }
 
 async function resetChat() {
-    try {
-        await fetch('/reset', { method: 'POST' });
-        chat.innerHTML = `
-            <div class="text-center text-gray-500 text-sm py-8">
-                Conversation reinitialisee.<br>
-                <span class="text-xs text-gray-600">Pose une nouvelle question.</span>
-            </div>`;
-    } catch (e) { console.error('Reset failed', e); }
+    await fetch('/reset', { method: 'POST' });
+    chat.innerHTML = `<div class="welcome"><h2>Deep Agent Lab</h2><p>Conversation reinitialisee.</p></div>`;
 }
 
-/* ── Rendering helpers ───────────────────────── */
-
-function looksLikeTable(text) {
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return false;
-    // psql CSV or pipe-delimited
-    return (lines[0].includes('|') && lines.length >= 2) ||
-           (lines[0].includes(',') && lines[0].split(',').length >= 2 && lines.length >= 2);
-}
-
-function renderPsqlTable(text) {
-    const lines = text.trim().split('\n').filter(l => l.trim());
-    if (lines.length === 0) return escapeHtml(text);
-
-    // Detect delimiter: pipe or comma
-    const delim = lines[0].includes('|') ? '|' : ',';
-    const parseRow = r => r.split(delim).map(c => c.trim()).filter(c => c !== '');
-
-    const headers = parseRow(lines[0]);
-    if (headers.length === 0) return escapeHtml(text);
-
-    // Skip separator lines (--- or ===)
-    let startIdx = 1;
-    if (lines[1] && /^[\s|+\-=]+$/.test(lines[1])) startIdx = 2;
-
-    let html = '<table class="md-table"><thead><tr>';
-    for (const h of headers) html += `<th>${escapeHtml(h)}</th>`;
-    html += '</tr></thead><tbody>';
-
-    for (let i = startIdx; i < lines.length; i++) {
-        if (/^[\s|+\-=]+$/.test(lines[i])) continue; // skip separators
-        if (/^\(\d+ rows?\)/.test(lines[i].trim())) continue; // skip "(N rows)"
-        const cells = parseRow(lines[i]);
-        if (cells.length === 0) continue;
-        html += '<tr>';
-        for (const c of cells) html += `<td>${escapeHtml(c)}</td>`;
-        html += '</tr>';
-    }
-    html += '</tbody></table>';
-    return html;
-}
-
+/* ── Markdown renderer ───────────────────────── */
 function renderMarkdown(text) {
-    let html = escapeHtml(text);
-    // Bold
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 px-1 rounded text-xs text-blue-300">$1</code>');
-    // Code blocks
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
-        `<pre class="bg-gray-900 rounded-lg p-3 mt-2 mb-2 text-xs overflow-x-auto border border-gray-800"><code>${code}</code></pre>`
+    let h = escapeHtml(text);
+    // Download links → styled buttons
+    h = h.replace(/\/download\/([a-f0-9-]+)\/([^\s<]+)/g, (_, id, f) =>
+        `<a href="/download/${id}/${f}" download class="dl-inline">` +
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>` +
+        `${f}</a>`
     );
-    // Markdown tables (pipe-delimited)
-    html = html.replace(/((?:\|.*\|(?:\n|$))+)/g, (match) => {
+    h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, l, c) =>
+        `<pre class="tool-query" style="color:var(--text-primary);margin:8px 0">${c}</pre>`
+    );
+    h = h.replace(/((?:\|.*\|(?:\n|$))+)/g, (match) => {
         const rows = match.trim().split('\n').filter(r => r.trim());
         if (rows.length < 2) return match;
-        const parseRow = r => r.split('|').filter(c => c.trim() !== '').map(c => c.trim());
-        const headers = parseRow(rows[0]);
-        const startIdx = rows[1] && /^[\s|-]+$/.test(rows[1]) ? 2 : 1;
-        let table = '<div class="overflow-x-auto my-2"><table class="md-table"><thead><tr>';
-        for (const h of headers) table += `<th>${h}</th>`;
-        table += '</tr></thead><tbody>';
-        for (let i = startIdx; i < rows.length; i++) {
-            const cells = parseRow(rows[i]);
-            table += '<tr>';
-            for (const c of cells) table += `<td>${c}</td>`;
-            table += '</tr>';
-        }
-        table += '</tbody></table></div>';
-        return table;
+        const pr = r => r.split('|').filter(c => c.trim() !== '').map(c => c.trim());
+        const hdrs = pr(rows[0]);
+        const si = rows[1] && /^[\s|-]+$/.test(rows[1]) ? 2 : 1;
+        let t = '<div style="overflow-x:auto;margin:8px 0"><table class="md-table"><thead><tr>';
+        for (const hd of hdrs) t += `<th>${hd}</th>`;
+        t += '</tr></thead><tbody>';
+        for (let i = si; i < rows.length; i++) { const cs = pr(rows[i]); t += '<tr>'; for (const c of cs) t += `<td>${c}</td>`; t += '</tr>'; }
+        return t + '</tbody></table></div>';
     });
-    // Headings
-    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold mt-3 mb-1 text-gray-300">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold mt-3 mb-1 text-gray-200">$1</h2>');
-    // Lists
-    html = html.replace(/^- (.+)$/gm, '<li class="ml-4 text-gray-300">$1</li>');
-    html = html.replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc my-1">$&</ul>');
-    // Paragraphs
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = html.replace(/\n/g, '<br>');
-    return `<p>${html}</p>`;
+    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+    h = h.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    h = h.replace(/\n\n/g, '</p><p>');
+    h = h.replace(/\n/g, '<br>');
+    return `<p>${h}</p>`;
 }
 
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function scrollToBottom() {
-    requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; });
-}
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function scrollToBottom() { requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; }); }
 
 /* ── Init ────────────────────────────────────── */
 loadHistory();
-input.focus();
+inputEl.focus();
 </script>
 </body>
 </html>

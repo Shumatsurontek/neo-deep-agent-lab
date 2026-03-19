@@ -14,8 +14,14 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = ""
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-5-mini-2025-08-07"
+    LLM_FALLBACK_MODEL: str = "gpt-4.1-mini"  # e.g. "claude-sonnet-4-20250514" or "gpt-4.1-mini"
+    LLM_FALLBACK_PROVIDER: str = "openai"  # "anthropic" or "openai"
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+
+    # Middleware
+    CONTEXT_EDITING_TRIGGER: int = 80_000  # tokens threshold to clear old tool results
+    TOOL_CALL_LIMIT_PER_RUN: int = 20  # max tool calls per agent run (safety)
 
     # SQL
     SQL_TIMEOUT_MS: int = DEFAULT_SQL_TIMEOUT_MS
