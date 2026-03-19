@@ -34,6 +34,11 @@ from src.tools.schema_tool import get_database_schema
 from src.tools.sql_tool import execute_sql
 
 logger = logging.getLogger("neo-deep-agent-lab")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(message)s"))
+    logger.addHandler(_handler)
 
 # Persistent store and checkpointer (survive across requests, not across restarts)
 store = InMemoryStore()

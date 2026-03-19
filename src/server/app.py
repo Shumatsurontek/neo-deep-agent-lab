@@ -26,6 +26,11 @@ from src.streaming.sse_encoder import encode_stream_async
 from src.tools.export_tool import get_file
 
 logger = logging.getLogger("neo-deep-agent-lab")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(message)s"))
+    logger.addHandler(_handler)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
