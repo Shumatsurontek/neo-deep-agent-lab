@@ -95,3 +95,33 @@ class AnalyzeQueryInput(BaseModel):
             "Supported: describe, corr, value_counts, info, nunique."
         ),
     )
+
+
+class ScratchpadInput(BaseModel):
+    """Input schema for the write_scratchpad tool."""
+
+    model_config = {"strict": True}
+
+    note: str = Field(
+        description=(
+            "A note to save in the session scratchpad. "
+            "Use this to record observations, patterns, or information "
+            "useful for the rest of the conversation."
+        ),
+        min_length=1,
+    )
+
+
+class PersistContextInput(BaseModel):
+    """Input schema for the persist_context tool."""
+
+    model_config = {"strict": True}
+
+    fact: str = Field(
+        description=(
+            "A verified fact to persist in the session context. "
+            "Must be a confirmed observation — not a hypothesis. "
+            "Examples: entity mappings, business rules, schema findings."
+        ),
+        min_length=1,
+    )

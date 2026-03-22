@@ -11,6 +11,7 @@ class SSEEventType(str, Enum):
     TEXT_DELTA = "text-delta"
     TOOL_CALL_START = "tool-call-start"
     TOOL_CALL_END = "tool-call-end"
+    INTERRUPT_REQUEST = "interrupt-request"
     ERROR = "error"
     DONE = "done"
 

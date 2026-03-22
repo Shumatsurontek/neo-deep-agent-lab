@@ -50,6 +50,20 @@ def error_event(message: str) -> SSEEvent:
     return SSEEvent(type=SSEEventType.ERROR, data={"message": message})
 
 
+def interrupt_request(
+    action_requests: list[dict[str, Any]],
+    review_configs: list[dict[str, Any]],
+) -> SSEEvent:
+    """Create an interrupt request event for human-in-the-loop approval."""
+    return SSEEvent(
+        type=SSEEventType.INTERRUPT_REQUEST,
+        data={
+            "action_requests": action_requests,
+            "review_configs": review_configs,
+        },
+    )
+
+
 def done_event() -> SSEEvent:
     """Create a done event marking the end of the stream."""
     return SSEEvent(type=SSEEventType.DONE)
