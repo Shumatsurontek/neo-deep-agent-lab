@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from deepagents import create_deep_agent
 from deepagents.backends import StoreBackend
 from langchain.agents.middleware import (
     ClearToolUsesEdit,
     ContextEditingMiddleware,
+    InterruptOnConfig,
     ModelFallbackMiddleware,
     ModelRetryMiddleware,
     ToolCallLimitMiddleware,
@@ -16,6 +18,7 @@ from langchain.agents.middleware import (
 )
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import ToolCall
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
@@ -26,11 +29,17 @@ from pydantic import SecretStr
 from src.agent.prompts import SQL_AGENT_PROMPT
 from src.config import settings
 from src.constants import LLMProvider
+from src.middleware.context_injection import inject_context
 from src.middleware.logging_mw import log_tool_calls
+from src.middleware.schema_cache import schema_cache_middleware
 from src.middleware.sql_guard import sql_guard_middleware
 from src.sandbox.app import get_or_create_sandbox
+from src.tools.analysis_tool import analyze_query
+from src.tools.chart_tool import generate_chart
+from src.tools.context_tool import persist_context
 from src.tools.export_tool import export_csv, export_json
 from src.tools.schema_tool import get_database_schema
+from src.tools.scratchpad_tool import write_scratchpad
 from src.tools.sql_tool import execute_sql
 
 logger = logging.getLogger("neo-deep-agent-lab")
@@ -71,16 +80,18 @@ def _build_model(
 
 
 def _build_middleware() -> list:
-    """Assemble the middleware stack.
+    """Assemble the 9-layer middleware stack.
 
     Order matters — middleware executes top-to-bottom:
     1. SQL guard         — block destructive queries before anything else
     2. Tool retry        — retry transient sandbox failures (timeouts, network)
     3. Tool call limit   — prevent infinite tool-call loops (safety)
     4. Logging           — log every tool call with timing
-    5. Context editing   — clear old tool results when context grows large
-    6. Model retry       — retry transient LLM API errors with backoff
-    7. Model fallback    — fall back to a secondary model if primary fails
+    5. Schema cache      — cache get_database_schema results (Write)
+    6. Context injection — enrich system prompt with cached context (Select)
+    7. Context editing   — clear old tool results when context grows large
+    8. Model retry       — retry transient LLM API errors with backoff
+    9. Model fallback    — fall back to a secondary model if primary fails
     """
     stack = [
         # ── Tool-level middleware ──
@@ -96,7 +107,9 @@ def _build_middleware() -> list:
             exit_behavior="continue",
         ),
         log_tool_calls,
+        schema_cache_middleware,
         # ── Context-level middleware ──
+        inject_context,
         ContextEditingMiddleware(
             edits=[
                 ClearToolUsesEdit(
@@ -131,6 +144,33 @@ def _build_middleware() -> list:
     return stack
 
 
+# ── Human-in-the-Loop ────────────────────────────────────────────────
+
+
+def _format_sql_approval(tool_call: ToolCall, state: Any, runtime: Any) -> str:
+    """Generate a French description for SQL approval requests."""
+    query = tool_call["args"].get("query", "")
+    return (
+        "Approbation requise pour l'execution SQL\n\n"
+        f"Requete :\n```sql\n{query}\n```"
+    )
+
+
+def _build_interrupt_on() -> dict[str, bool | InterruptOnConfig] | None:
+    """Build interrupt_on config if HITL is enabled."""
+    if not settings.HITL_ENABLED:
+        return None
+    return {
+        "execute_sql": InterruptOnConfig(
+            allowed_decisions=["approve", "edit", "reject"],
+            description=_format_sql_approval,
+        ),
+    }
+
+
+# ── Agent Factory ────────────────────────────────────────────────────
+
+
 def create_sql_agent(
     provider: str | None = None, model: str | None = None
 ) -> CompiledStateGraph:
@@ -139,10 +179,20 @@ def create_sql_agent(
 
     return create_deep_agent(
         model=_build_model(provider, model),
-        tools=[execute_sql, get_database_schema, export_csv, export_json],
+        tools=[
+            execute_sql,
+            get_database_schema,
+            export_csv,
+            export_json,
+            generate_chart,
+            analyze_query,
+            write_scratchpad,
+            persist_context,
+        ],
         system_prompt=SQL_AGENT_PROMPT,
         middleware=_build_middleware(),
         backend=lambda rt: StoreBackend(rt),
         store=store,
         checkpointer=checkpointer,
+        interrupt_on=_build_interrupt_on(),
     )

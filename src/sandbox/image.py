@@ -8,6 +8,7 @@ def create_pg_image(dump_path: str = "data/neo_dump.sql") -> modal.Image:
 
     PostgreSQL is NOT started during build (avoids permission issues).
     The dump and init script are loaded at sandbox runtime by app.py.
+    Sandbox Python scripts (chart, analysis) are baked into the image.
     """
     return (
         modal.Image.debian_slim(python_version="3.11")
@@ -16,10 +17,25 @@ def create_pg_image(dump_path: str = "data/neo_dump.sql") -> modal.Image:
             "postgresql-client",
             "sudo",
         )
+        .pip_install(
+            "pandas",
+            "seaborn",
+            "matplotlib",
+        )
         .add_local_file(dump_path, "/tmp/neo_dump.sql", copy=True)  # nosec B108
         .add_local_file(
             "src/sandbox/init_pg.sh",
             "/tmp/init_pg.sh",  # nosec B108
+            copy=True,
+        )
+        .add_local_file(
+            "src/sandbox/scripts/chart.py",
+            "/opt/scripts/chart.py",
+            copy=True,
+        )
+        .add_local_file(
+            "src/sandbox/scripts/analysis.py",
+            "/opt/scripts/analysis.py",
             copy=True,
         )
     )

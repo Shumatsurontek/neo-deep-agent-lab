@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Middleware
     CONTEXT_EDITING_TRIGGER: int = 80_000  # tokens threshold to clear old tool results
     TOOL_CALL_LIMIT_PER_RUN: int = 20  # max tool calls per agent run (safety)
+    HITL_ENABLED: bool = (
+        True  # human-in-the-loop approval for SQL execution (toggle via /hitl)
+    )
 
     # SQL
     SQL_TIMEOUT_MS: int = DEFAULT_SQL_TIMEOUT_MS
