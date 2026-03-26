@@ -85,7 +85,17 @@ async def inject_context(request: ModelRequest) -> str:  # type: ignore[type-arg
 
     # RAG context — search indexed documents for relevant chunks
     if settings.RECALL_ENABLED:
-        rag_chunks = await _recall_rag_context(request)
+        last_msg = _extract_last_user_message(request.messages)
+        if store._last_rag_query == last_msg and store.last_rag_chunks:
+            rag_chunks = store.last_rag_chunks
+        else:
+            rag_chunks = await _recall_rag_context(request)
+            if rag_chunks:
+                store.last_rag_chunks = rag_chunks
+                store._last_rag_query = last_msg
+            else:
+                store.last_rag_chunks = []
+                store._last_rag_query = last_msg
         if rag_chunks:
             rag_lines = [f"- [score:{r.score:.2f}] {r.text}" for r in rag_chunks]
             sections.append(

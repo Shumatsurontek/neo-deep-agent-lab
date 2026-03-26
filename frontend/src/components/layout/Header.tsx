@@ -31,7 +31,7 @@ export function Header({
     <header
       className="flex items-center justify-between"
       style={{
-        padding: "6px 16px",
+        padding: "8px 16px",
         borderBottom: "0.5px solid var(--color-border)",
         background: "var(--color-bg-paper)",
       }}
@@ -41,11 +41,11 @@ export function Header({
         <div
           className="font-mono flex items-center justify-center"
           style={{
-            width: "24px",
-            height: "24px",
-            borderRadius: "4px",
+            width: "28px",
+            height: "28px",
+            borderRadius: "6px",
             border: "0.5px solid var(--color-border-secondary)",
-            fontSize: "11px",
+            fontSize: "13px",
             color: "var(--color-purple)",
             fontWeight: 600,
           }}
@@ -53,17 +53,17 @@ export function Header({
           N
         </div>
         <div className="hidden sm:block">
-          <div className="font-mono" style={{ fontSize: "11px", fontWeight: 400, color: "var(--color-text-bright)", letterSpacing: "0.02em" }}>
+          <div className="font-mono" style={{ fontSize: "13px", fontWeight: 400, color: "var(--color-text-bright)", letterSpacing: "0.02em" }}>
             Neo Deep Agent
           </div>
-          <div className="font-mono" style={{ fontSize: "8px", color: "var(--color-text-secondary)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <div className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
             sql sandbox // modal
           </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         {onToggleSidebar && (
           <HeaderBtn active={!!sidebarVisible} onClick={onToggleSidebar}>threads</HeaderBtn>
         )}
@@ -78,16 +78,16 @@ export function Header({
 
         {/* HITL toggle */}
         <div className="flex items-center gap-1.5" title="Human-in-the-Loop">
-          <span className="font-mono uppercase" style={{ fontSize: "8px", color: "var(--color-text-secondary)", letterSpacing: "0.1em" }}>
+          <span className="font-mono uppercase" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.08em" }}>
             hitl
           </span>
           <button
             onClick={toggle}
             className="relative transition-colors"
             style={{
-              width: "28px",
-              height: "14px",
-              borderRadius: "7px",
+              width: "32px",
+              height: "16px",
+              borderRadius: "8px",
               background: enabled ? "rgba(124, 214, 100, 0.3)" : "var(--color-bg-secondary)",
               border: `0.5px solid ${enabled ? "rgba(124, 214, 100, 0.4)" : "var(--color-border-secondary)"}`,
               cursor: "pointer",
@@ -96,18 +96,18 @@ export function Header({
             <div
               className="rounded-full transition-transform"
               style={{
-                width: "10px",
-                height: "10px",
+                width: "12px",
+                height: "12px",
                 background: "var(--color-text-bright)",
                 position: "absolute",
                 top: "1.5px",
-                transform: enabled ? "translateX(15px)" : "translateX(2px)",
+                transform: enabled ? "translateX(17px)" : "translateX(2px)",
               }}
             />
           </button>
         </div>
 
-        {/* Middleware toggle panel */}
+        {/* Middleware panel */}
         <div className="relative">
           <HeaderBtn active={mwOpen} onClick={() => setMwOpen(!mwOpen)}>mw</HeaderBtn>
           <MiddlewarePanel visible={mwOpen} onClose={() => setMwOpen(false)} />
@@ -122,17 +122,17 @@ export function Header({
         <Separator />
 
         {/* Status dot */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <div
             className="rounded-full"
             style={{
-              width: "5px",
-              height: "5px",
+              width: "6px",
+              height: "6px",
               background: status === "streaming" ? "var(--color-green)" : status === "error" ? "var(--color-red)" : "rgba(124, 214, 100, 0.5)",
               animation: status === "streaming" ? "pulse-dot 1s ease-in-out infinite" : "none",
             }}
           />
-          <span className="font-mono" style={{ fontSize: "8px", color: "var(--color-text-secondary)" }}>
+          <span className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-secondary)" }}>
             {isStreaming ? "streaming" : "ready"}
           </span>
         </div>
@@ -141,12 +141,12 @@ export function Header({
           onClick={resetChat}
           className="font-mono uppercase tracking-wider transition-colors"
           style={{
-            fontSize: "8px",
-            letterSpacing: "0.1em",
+            fontSize: "10px",
+            letterSpacing: "0.08em",
             color: "var(--color-text-secondary)",
-            padding: "3px 8px",
+            padding: "4px 10px",
             border: "0.5px solid var(--color-border)",
-            borderRadius: "2px",
+            borderRadius: "3px",
             background: "transparent",
             cursor: "pointer",
           }}
@@ -161,7 +161,7 @@ export function Header({
 }
 
 function Separator() {
-  return <div style={{ width: "0.5px", height: "12px", background: "var(--color-border)", margin: "0 2px" }} />;
+  return <div style={{ width: "0.5px", height: "14px", background: "var(--color-border)", margin: "0 3px" }} />;
 }
 
 function HeaderBtn({
@@ -178,10 +178,10 @@ function HeaderBtn({
       onClick={onClick}
       className="font-mono uppercase tracking-wider transition-all"
       style={{
-        fontSize: "8px",
-        letterSpacing: "0.1em",
-        padding: "3px 8px",
-        borderRadius: "2px",
+        fontSize: "10px",
+        letterSpacing: "0.08em",
+        padding: "4px 10px",
+        borderRadius: "3px",
         border: `0.5px solid ${active ? "rgba(167, 125, 255, 0.4)" : "var(--color-border)"}`,
         color: active ? "var(--color-purple)" : "var(--color-text-secondary)",
         background: active ? "rgba(167, 125, 255, 0.06)" : "transparent",

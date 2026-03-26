@@ -386,6 +386,7 @@ async def get_context(session: Session = Depends(get_current_session)):
         "summary": store.summary,
         "reward_summary": store.reward_summary(),
         "last_recall": [r.to_dict() for r in store.last_recall],
+        "last_rag_chunks": [r.to_dict() for r in store.last_rag_chunks],
     }
 
 

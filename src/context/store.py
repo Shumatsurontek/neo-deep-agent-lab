@@ -67,7 +67,9 @@ class ContextStore:
     summary: str | None = None
     # Ephemeral — regenerated each turn by recall middleware, NOT persisted.
     last_recall: list[RecalledMemory] = field(default_factory=list)
+    last_rag_chunks: list[RecalledMemory] = field(default_factory=list)
     _last_recall_query: str | None = field(default=None, repr=False)
+    _last_rag_query: str | None = field(default=None, repr=False)
 
     def add_context(
         self, text: str, source: Literal["user", "agent"] = "user"

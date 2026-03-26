@@ -36,11 +36,19 @@ class SSELogHandler(logging.Handler):
 
 
 def install_log_handler() -> None:
-    """Install the SSE handler on the root logger."""
+    """Install the SSE handler on root + uvicorn loggers so all logs stream to frontend."""
     handler = SSELogHandler()
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter("%(message)s"))
+
+    # Root logger — captures all app logs (neo-deep-agent-lab.*)
     logging.getLogger().addHandler(handler)
+
+    # Uvicorn loggers — access logs (GET /chat 200) and server logs
+    for name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        uv_logger = logging.getLogger(name)
+        uv_logger.addHandler(handler)
+
     logger.info("SSE log handler installed")
 
 

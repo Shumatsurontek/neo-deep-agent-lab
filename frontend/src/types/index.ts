@@ -32,6 +32,7 @@ export interface ContextData {
   summary: string | null;
   reward_summary: RewardSummary;
   last_recall: RecalledMemory[];
+  last_rag_chunks: RecalledMemory[];
 }
 
 export interface PromptSection {
@@ -96,4 +97,11 @@ export interface RagDocument {
   token_count: number;
   created_at: string;
   mime_type: string;
+}
+
+export interface RagChunk {
+  index: number;
+  text: string;
+  source: string;
+  token_estimate: number;
 }

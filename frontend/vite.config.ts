@@ -23,8 +23,18 @@ export default defineConfig({
       "/health": BACKEND,
       "/prompt-preview": BACKEND,
       "/download": BACKEND,
-      "/documents": BACKEND,
       // SSE endpoints need special proxy config to avoid buffering
+      "/documents/upload-stream": {
+        target: BACKEND,
+        changeOrigin: true,
+        headers: { Connection: "keep-alive" },
+      },
+      "/documents/text-stream": {
+        target: BACKEND,
+        changeOrigin: true,
+        headers: { Connection: "keep-alive" },
+      },
+      "/documents": BACKEND,
       "/logs": {
         target: BACKEND,
         changeOrigin: true,

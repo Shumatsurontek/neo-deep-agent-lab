@@ -25,7 +25,7 @@ export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClos
       }}
     >
       <div className="flex items-center justify-between" style={{ marginBottom: "8px" }}>
-        <span className="uppercase tracking-widest" style={{ fontSize: "8px", letterSpacing: "0.12em", color: "var(--color-text-bright)" }}>
+        <span className="uppercase tracking-widest" style={{ fontSize: "10px", letterSpacing: "0.12em", color: "var(--color-text-bright)" }}>
           middleware stack
         </span>
         <button
@@ -68,10 +68,10 @@ export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClos
               />
             </button>
             <div className="flex-1 min-w-0">
-              <div style={{ fontSize: "9px", color: mw.enabled ? "var(--color-text-bright)" : "var(--color-text-secondary)" }}>
+              <div style={{ fontSize: "11px", color: mw.enabled ? "var(--color-text-bright)" : "var(--color-text-secondary)" }}>
                 {mw.name.replace(/_/g, " ")}
               </div>
-              <div style={{ fontSize: "8px", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: "10px", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {mw.description}
               </div>
             </div>
@@ -80,7 +80,7 @@ export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClos
       </div>
 
       {items.length === 0 && (
-        <div style={{ fontSize: "9px", color: "var(--color-text-secondary)", fontStyle: "italic", textAlign: "center", padding: "8px 0" }}>
+        <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", fontStyle: "italic", textAlign: "center", padding: "8px 0" }}>
           loading...
         </div>
       )}

@@ -166,7 +166,7 @@ export default function App() {
           onClose={() => setSidebarVisible(false)}
           onNewAgent={handleNewAgent}
         />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <AgentTabs onNewAgent={handleNewAgent} />
           <Routes>
             <Route path="/documents" element={<DocumentPanel />} />

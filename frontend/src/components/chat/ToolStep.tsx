@@ -68,7 +68,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
         className="w-full flex items-center gap-2 py-1 text-left group"
       >
         <span
-          className="text-[9px] transition-transform"
+          className="text-[11px] transition-transform"
           style={{ color: "var(--color-text-secondary)", transform: open ? "rotate(90deg)" : "none" }}
         >
           &#x25B8;
@@ -82,13 +82,13 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
 
         <span
           className="font-mono uppercase tracking-widest"
-          style={{ fontSize: "9px", fontWeight: 400, letterSpacing: "0.12em", color: accentColor }}
+          style={{ fontSize: "11px", fontWeight: 400, letterSpacing: "0.12em", color: accentColor }}
         >
           {tool.name}
         </span>
 
         {badge && (
-          <span className="ml-auto font-mono" style={{ fontSize: "9px", color: "var(--color-text-secondary)" }}>
+          <span className="ml-auto font-mono" style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
             {badge}
           </span>
         )}
@@ -99,7 +99,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
         <div className="pb-1 space-y-1.5" style={{ marginTop: "2px" }}>
           {inputDisplay && (
             <div>
-              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "8px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
+              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
                 input
               </div>
               <pre
@@ -121,7 +121,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
 
           {tool.output && (
             <div>
-              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "8px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
+              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
                 output
               </div>
 
@@ -135,7 +135,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
                             key={i}
                             className="font-mono text-left font-normal sticky top-0"
                             style={{
-                              fontSize: "9px",
+                              fontSize: "10px",
                               textTransform: "uppercase",
                               letterSpacing: "0.08em",
                               color: "var(--color-text-secondary)",
@@ -207,7 +207,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
           )}
 
           {isRunning && !tool.output && (
-            <div className="font-mono italic" style={{ fontSize: "9px", color: "var(--color-yellow)", opacity: 0.6 }}>
+            <div className="font-mono italic" style={{ fontSize: "11px", color: "var(--color-yellow)", opacity: 0.6 }}>
               executing...
             </div>
           )}
@@ -223,7 +223,7 @@ function ActionBtn({ onClick, children }: { onClick: () => void; children: React
       onClick={onClick}
       className="font-mono uppercase tracking-wider transition-all"
       style={{
-        fontSize: "8px",
+        fontSize: "10px",
         letterSpacing: "0.1em",
         color: "var(--color-text-secondary)",
         padding: "2px 6px",

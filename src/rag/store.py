@@ -7,9 +7,9 @@ Embeddings are computed automatically by the store's index configuration.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from langchain_core.documents import Document
 
@@ -37,13 +37,19 @@ async def store_chunks(
     source_name: str,
     mime_type: str = "text/plain",
     document_id: str | None = None,
+    on_progress: Callable[[int, int, str], None] | None = None,
 ) -> RagDocument:
     """Store document chunks in the PostgresStore with automatic embedding.
+
+    Args:
+        on_progress: Optional callback(current_index, total, status_message).
 
     Returns metadata about the stored document.
     """
     store = get_pg_store()
     doc_id = document_id or str(uuid.uuid4())
+
+    total = len(chunks)
 
     # Store each chunk
     items = []
@@ -59,11 +65,19 @@ async def store_chunks(
         items.append((("rag", doc_id), f"chunk_{i}", value))
         # Rough token estimate: 1 token ≈ 4 chars
         total_tokens += len(chunk.page_content) // 4
+        if on_progress:
+            on_progress(i + 1, total, f"Preparing chunk {i + 1}/{total}")
+
+    if on_progress:
+        on_progress(0, total, "Embedding and storing chunks...")
 
     # Batch put using PutOp (abatch expects Op objects, not coroutines)
     from langgraph.store.base import PutOp
 
     await store.abatch([PutOp(ns, key, val) for ns, key, val in items])
+
+    if on_progress:
+        on_progress(total, total, "Chunks stored")
 
     # Store document metadata
     meta_value = {
@@ -91,6 +105,40 @@ async def store_chunks(
         created_at=meta_value["created_at"],
         mime_type=mime_type,
     )
+
+
+@dataclass
+class RagChunk:
+    """A single stored chunk."""
+
+    index: int
+    text: str
+    source: str
+    token_estimate: int
+
+
+async def get_chunks(document_id: str) -> list[RagChunk]:
+    """Fetch all chunks for a given document."""
+    store = get_pg_store()
+    items = await store.asearch(
+        ("rag", document_id),
+        query="",
+        limit=1000,
+    )
+    chunks: list[RagChunk] = []
+    for item in items:
+        val = item.value
+        text = val.get("text", "")
+        chunks.append(
+            RagChunk(
+                index=val.get("chunk_index", 0),
+                text=text,
+                source=val.get("source", "unknown"),
+                token_estimate=len(text) // 4,
+            )
+        )
+    chunks.sort(key=lambda c: c.index)
+    return chunks
 
 
 async def list_documents() -> list[RagDocument]:

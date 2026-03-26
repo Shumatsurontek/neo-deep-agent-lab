@@ -11,7 +11,7 @@ export function MessageBubble({ message, isLast }: { message: Message; isLast?: 
           className="font-mono"
           style={{
             maxWidth: "480px",
-            fontSize: "12px",
+            fontSize: "13px",
             fontWeight: 300,
             lineHeight: "170%",
             color: "var(--color-text-bright)",
@@ -37,11 +37,11 @@ export function MessageBubble({ message, isLast }: { message: Message; isLast?: 
         <div
           className="shrink-0 font-mono flex items-center justify-center"
           style={{
-            width: "18px",
-            height: "18px",
+            width: "22px",
+            height: "22px",
             borderRadius: "50%",
             border: "0.5px solid var(--color-border-secondary)",
-            fontSize: "7px",
+            fontSize: "9px",
             color: "var(--color-purple)",
             marginTop: "2px",
           }}
@@ -63,7 +63,7 @@ export function MessageBubble({ message, isLast }: { message: Message; isLast?: 
           {hasContent && (
             <div
               className="prose"
-              style={{ fontSize: "12px", fontWeight: 300, lineHeight: "185%", color: "var(--color-text)" }}
+              style={{ fontSize: "13px", fontWeight: 300, lineHeight: "185%", color: "var(--color-text)" }}
             >
               <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
                 {message.content}
@@ -75,7 +75,7 @@ export function MessageBubble({ message, isLast }: { message: Message; isLast?: 
           {message.metrics && (
             <div
               className="flex items-center gap-3 font-mono"
-              style={{ fontSize: "9px", color: "var(--color-text-secondary)", marginTop: "4px", paddingTop: "4px", borderTop: "0.5px solid var(--color-border)" }}
+              style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginTop: "6px", paddingTop: "6px", borderTop: "0.5px solid var(--color-border)" }}
             >
               <span>
                 ttft <span style={{ color: "var(--color-green)" }}>{message.metrics.ttft_ms.toFixed(0)}ms</span>

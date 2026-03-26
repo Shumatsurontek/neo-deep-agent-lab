@@ -97,12 +97,12 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
             className="rounded-full"
             style={{ width: "5px", height: "5px", background: connected ? "var(--color-green)" : "var(--color-red)" }}
           />
-          <span className="font-mono" style={{ fontSize: "9px", color: "var(--color-text-bright)", letterSpacing: "0.05em" }}>
+          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-bright)", letterSpacing: "0.05em" }}>
             logs
           </span>
         </div>
 
-        <span className="font-mono" style={{ fontSize: "8px", color: "var(--color-text-secondary)" }}>
+        <span className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-secondary)" }}>
           {filtered.length}/{logs.length}
         </span>
 
@@ -111,12 +111,12 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
           onChange={(e) => setLevelFilter(e.target.value)}
           className="font-mono"
           style={{
-            fontSize: "9px",
+            fontSize: "11px",
             color: "var(--color-text)",
             background: "var(--color-bg-secondary)",
             border: "0.5px solid var(--color-border)",
             borderRadius: "2px",
-            padding: "1px 16px 1px 4px",
+            padding: "2px 16px 2px 6px",
             outline: "none",
           }}
         >
@@ -131,18 +131,18 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
           placeholder="filter..."
           className="font-mono"
           style={{
-            fontSize: "9px",
+            fontSize: "11px",
             color: "var(--color-text)",
             background: "var(--color-bg-secondary)",
             border: "0.5px solid var(--color-border)",
             borderRadius: "2px",
-            padding: "1px 6px",
-            width: "100px",
+            padding: "2px 8px",
+            width: "120px",
             outline: "none",
           }}
         />
 
-        <label className="flex items-center gap-1 font-mono ml-auto" style={{ fontSize: "8px", color: "var(--color-text-secondary)", cursor: "pointer" }}>
+        <label className="flex items-center gap-1 font-mono ml-auto" style={{ fontSize: "10px", color: "var(--color-text-secondary)", cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={autoScroll}
@@ -155,7 +155,7 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
         <button
           onClick={() => setLogs([])}
           className="font-mono"
-          style={{ fontSize: "8px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
+          style={{ fontSize: "10px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-text)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-secondary)"; }}
         >
@@ -172,10 +172,10 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
       </div>
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto font-mono" style={{ fontSize: "10px", lineHeight: "18px", padding: "2px 14px" }}>
+      <div className="flex-1 overflow-y-auto font-mono" style={{ fontSize: "11px", lineHeight: "20px", padding: "4px 14px" }}>
         {filtered.length === 0 ? (
-          <div style={{ color: "var(--color-text-secondary)", fontStyle: "italic", padding: "12px 0", textAlign: "center", fontSize: "9px" }}>
-            {!connected ? "connecting to log stream..." : "waiting for logs..."}
+          <div style={{ color: "var(--color-text-secondary)", fontStyle: "italic", padding: "12px 0", textAlign: "center", fontSize: "11px" }}>
+            {!connected ? "connecting to log stream..." : "waiting for logs…"}
           </div>
         ) : (
           filtered.map((entry, i) => (
