@@ -69,8 +69,7 @@ class GenerateChartInput(BaseModel):
     chart_type: str = Field(
         default="bar",
         description=(
-            "Type of chart to generate. "
-            "Supported: bar, line, scatter, hist, heatmap, pie, box."
+            "Type of chart to generate. Supported: bar, line, scatter, hist, heatmap, pie, box."
         ),
     )
     title: str = Field(
@@ -91,8 +90,7 @@ class AnalyzeQueryInput(BaseModel):
     analysis: str = Field(
         default="describe",
         description=(
-            "Type of analysis to run. "
-            "Supported: describe, corr, value_counts, info, nunique."
+            "Type of analysis to run. Supported: describe, corr, value_counts, info, nunique."
         ),
     )
 

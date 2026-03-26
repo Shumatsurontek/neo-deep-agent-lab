@@ -5,7 +5,7 @@
 Conversational SQL Agent with Sandboxed Execution, Context Engineering & Human-in-the-Loop
 
 **Arthur Edmond** · LLM Engineer @ [Swapn](https://swapn.com)
-*A production-grade SQL agent powered by LangChain Deep Agents, executing queries in an isolated Modal sandbox with a 9-layer middleware stack and a full context engineering layer*
+*A production-grade SQL agent powered by LangChain Deep Agents, executing queries in an isolated Modal sandbox with a 7-layer middleware stack, hybrid BM25+vector recall (ParadeDB), and a React/Next.js frontend*
 
 
 
@@ -13,7 +13,7 @@ Conversational SQL Agent with Sandboxed Execution, Context Engineering & Human-i
 
 ## ⚡ TL;DR
 
-> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **9 middleware** (SQL guard, schema cache, context injection, model fallback...) assurent securite et resilience. **Context engineering complet** : schema cache, scratchpad avec reward +1/-1, contexte persistant (user + agent), dynamic prompt preview en temps reel, et **Human-in-the-Loop** (approbation SQL avant execution). Frontend avec streaming SSE, tool panels interactifs, export CSV/JSON, charts inline, et **switch de provider a chaud** (OpenAI, Anthropic, Ollama local).
+> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, schema cache, context injection, model fallback...) assurent securite et resilience. **Context engineering complet** : schema cache, scratchpad avec reward +1/-1, **short memory recall** (BM25+vector hybrid search via ParadeDB/RRF), contexte persistant (user + agent), dynamic prompt preview, et **Human-in-the-Loop** (approbation SQL avant execution). **Frontend React/Next.js + Tailwind** avec streaming SSE, tool panels, charts inline, et **switch de provider a chaud** (OpenAI, Anthropic, Ollama local). Persistence PostgreSQL (AsyncPostgresStore + AsyncPostgresSaver).
 
 ---
 
@@ -27,14 +27,13 @@ graph LR
     C --> A[Deep Agent<br/>LangGraph]
     S --> A
 
-    subgraph mw [" 9-Layer Middleware Stack "]
+    subgraph mw [" 7-Layer Middleware Stack "]
         direction TB
         SG["🛡️ SQL Guard"]
         TR["🔄 Tool Retry"]
         TL["🚫 Tool Call Limit"]
-        LOG["📊 Tool Logger"]
         SC["💾 Schema Cache"]
-        CI["🎯 Context Injection"]
+        CI["🎯 Context Injection + Hybrid Recall"]
         CE["✂️ Context Editing"]
         MR["🔄 Model Retry"]
         MF["🔀 Model Fallback"]
@@ -68,7 +67,15 @@ graph LR
 
     A -.-> ctx
     A -.-> LS[LangSmith]
-    A -.-> CP[MemorySaver]
+    A -.-> CP[AsyncPostgresSaver]
+
+    subgraph search [" Hybrid Search "]
+        VS["pgvector (cosine)"]
+        BM["pg_search (BM25)"]
+        RRF["RRF Fusion"]
+    end
+
+    CI -.-> search
 ```
 
 
@@ -136,13 +143,22 @@ Statistiques descriptives, correlations, distributions, profiling — le tout ex
 
 Tokens streames un par un. Tool panels interactifs avec spinner → check, input SQL visible, boutons Copy/CSV/JSON. Historique complet avec persistence des tool calls au reload.
 
-### 🛡️ 9 Middleware en Serie
+### 🔍 Short Memory Recall (Hybrid BM25 + Vector)
 
-SQL guard, tool retry, tool call limit, logging, schema cache, context injection, context editing, model retry, model fallback.
+Automatic semantic recall via `@dynamic_prompt`. Before each LLM call, the agent recalls relevant memories from past conversations using **Reciprocal Rank Fusion** (RRF) combining:
 
-### 💾 Memoire & Historique
+- **pgvector** cosine similarity (weight 0.6)
+- **ParadeDB pg_search** BM25 full-text (weight 0.4)
 
-`MemorySaver` (checkpointer) + `InMemoryStore` (StoreBackend). Historique complet avec tool calls persiste au reload de page.
+Per-turn caching prevents redundant searches in multi-step runs. Recalled memories are displayed in the sidebar.
+
+### 🛡️ 7 Middleware en Serie
+
+SQL guard, tool retry, tool call limit, schema cache, context injection (with hybrid recall), context editing, model retry, model fallback.
+
+### 💾 Persistence PostgreSQL
+
+`AsyncPostgresSaver` (checkpointer) + `AsyncPostgresStore` (vector store with embeddings). Historique complet avec tool calls persiste au reload de page. ParadeDB image provides both pgvector and pg_search extensions.
 
 ### 🔀 Multi-Provider (OpenAI, Anthropic, Ollama)
 
@@ -163,10 +179,10 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
                     ┌─────────────────────────────────────────────────────────────────┐
                     │                  MIDDLEWARE EXECUTION ORDER                     │
                     │                                                                 │
-  Tool-level:       │  ┌──────────┐  ┌───────────┐  ┌───────────┐  ┌──────┐         │
-                    │  │ SQL Guard │→ │ Tool Retry│→ │ Call Limit│→ │ Log  │         │
-                    │  │ block DDL │  │ 2x backoff│  │ 20/run    │  │timing│         │
-                    │  └──────────┘  └───────────┘  └───────────┘  └──────┘         │
+  Tool-level:       │  ┌──────────┐  ┌───────────┐  ┌───────────┐                   │
+                    │  │ SQL Guard │→ │ Tool Retry│→ │ Call Limit│                   │
+                    │  │ block DDL │  │ 2x backoff│  │ 20/run    │                   │
+                    │  └──────────┘  └───────────┘  └───────────┘                   │
                     │                                    ↓                            │
                     │  ┌──────────────┐                                               │
                     │  │ Schema Cache │  intercepts get_database_schema results       │
@@ -175,7 +191,8 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
                     │                                                                 │
   Context-level:    │  ┌───────────────────────────────────────────────────────┐      │
                     │  │ Context Injection (@dynamic_prompt)                   │      │
-                    │  │ injects: schema + user_ctx + scratchpad + summary    │      │
+                    │  │ + hybrid recall (BM25+vector via RRF)               │      │
+                    │  │ injects: schema + ctx + scratchpad + summary + recall│      │
                     │  └───────────────────────────────────────────────────────┘      │
                     │  ┌───────────────────────────────────────────────────────┐      │
                     │  │ Context Editing — clear tool results > 80k tokens    │      │
@@ -191,18 +208,16 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
                     └─────────────────────────────────────────────────────────────────┘
 ```
 
-
 | #   | Middleware                  | Type     | Role                                                                  | Configuration                    |
 | --- | -------------------------- | -------- | --------------------------------------------------------------------- | -------------------------------- |
 | 1   | `sql_guard_middleware`      | Custom   | Bloque les requetes destructives (DROP, DELETE, INSERT, ALTER...)     | Whitelist: SELECT, WITH, EXPLAIN |
 | 2   | `ToolRetryMiddleware`      | Built-in | Retry automatique des tools en echec (timeout sandbox, erreur reseau) | 2 retries, backoff 2x            |
 | 3   | `ToolCallLimitMiddleware`  | Built-in | Limite les appels tools par run — empeche les boucles infinies        | 20 calls/run, soft exit          |
-| 4   | `log_tool_calls`           | Custom   | Log chaque tool call avec timing (ms), taille input/output            | Sync + async                     |
-| 5   | `schema_cache_middleware`  | Custom   | Cache les resultats `get_database_schema` dans ContextStore           | `@wrap_tool_call`                |
-| 6   | `inject_context`           | Custom   | Enrichit le system prompt avec schema + ctx + scratchpad + summary    | `@dynamic_prompt`                |
-| 7   | `ContextEditingMiddleware` | Built-in | Efface les anciens resultats tools quand le contexte depasse le seuil | 80k tokens, garde 3 derniers     |
-| 8   | `ModelRetryMiddleware`     | Built-in | Retry automatique des appels LLM (rate limit, API timeout, 5xx)       | 3 retries, backoff 2x            |
-| 9   | `ModelFallbackMiddleware`  | Built-in | Bascule sur un modele de secours si le principal echoue               | Optionnel (config .env)          |
+| 4   | `schema_cache_middleware`  | Custom   | Cache les resultats `get_database_schema` dans ContextStore           | `@wrap_tool_call`                |
+| 5   | `inject_context`           | Custom   | Enrichit le system prompt + hybrid recall (BM25+vector RRF)           | `@dynamic_prompt`, per-turn cache|
+| 6   | `ContextEditingMiddleware` | Built-in | Efface les anciens resultats tools quand le contexte depasse le seuil | 80k tokens, garde 3 derniers     |
+| 7   | `ModelRetryMiddleware`     | Built-in | Retry automatique des appels LLM (rate limit, API timeout, 5xx)       | 3 retries, backoff 2x            |
+| —   | `ModelFallbackMiddleware`  | Built-in | Bascule sur un modele de secours si le principal echoue               | Optionnel (config .env)          |
 
 
 ---
@@ -210,21 +225,22 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 ## 🛠️ Tech Stack
 
 
-| Composant         | Technologie                                             |
-| ----------------- | ------------------------------------------------------- |
-| Agent Framework   | LangChain Deep Agents + LangGraph v2                    |
-| LLM               | OpenAI / Anthropic / **Ollama** (switch a chaud via UI) |
-| Middleware        | `langchain.agents.middleware` (5 built-in + 4 custom)   |
-| Context Store     | Per-thread dataclass (schema, ctx, scratchpad, summary) |
-| Sandbox           | Modal (conteneur isole, PG15, read-only)                |
-| Base de donnees   | PostgreSQL 15                                           |
-| API Server        | FastAPI + SSE streaming                                 |
-| Frontend          | HTML/JS vanilla (sidebar context engineering)           |
-| CLI               | Rich (panels, markdown, spinners)                       |
-| Validation        | Pydantic v2 (strict mode)                               |
-| Tracing           | LangSmith                                               |
-| Store             | InMemoryStore + StoreBackend (Deep Agents)              |
-| Code Quality      | Ruff + Pyright                                          |
+| Composant       | Technologie                                                     |
+| --------------- | --------------------------------------------------------------- |
+| Agent Framework | LangChain Deep Agents + LangGraph v2                            |
+| LLM             | OpenAI / Anthropic / **Ollama** (switch a chaud via UI)         |
+| Middleware      | `langchain.agents.middleware` (4 built-in + 3 custom)           |
+| Context Store   | Per-thread dataclass (schema, ctx, scratchpad, summary, recall) |
+| Sandbox         | Modal (conteneur isole, PG15, read-only)                        |
+| Base de donnees | ParadeDB (PostgreSQL 17 + pgvector + pg_search/BM25)            |
+| Persistence     | AsyncPostgresStore (vectors) + AsyncPostgresSaver (checkpoints) |
+| Search          | Hybrid BM25+vector via Reciprocal Rank Fusion (RRF)             |
+| API Server      | FastAPI + SSE streaming                                         |
+| Frontend        | Next.js 16 + React 19 + Tailwind CSS 4                          |
+| CLI             | Rich (panels, markdown, spinners)                               |
+| Validation      | Pydantic v2 (strict mode)                                       |
+| Tracing         | LangSmith                                                       |
+| Code Quality    | Ruff + Pyright                                                  |
 
 
 ---
@@ -232,6 +248,8 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 ## 📋 Prerequis
 
 - Python 3.11+
+- Node.js 18+ (pour le frontend Next.js)
+- Docker (pour ParadeDB — PostgreSQL 17 + pgvector + pg_search)
 - Compte [Modal](https://modal.com) (gratuit pour commencer)
 - Cle API Anthropic ou OpenAI
 - (Optionnel) [Ollama](https://ollama.ai) installe localement pour les modeles open-source
@@ -290,28 +308,29 @@ LANGCHAIN_PROJECT=neo-deep-agent-lab
 
 ## 💻 Utilisation
 
-### Frontend Web
+### Frontend Web (Next.js)
 
 ```bash
+# Terminal 1 — Backend
 make serve
-# → http://localhost:8080
+# → FastAPI on http://localhost:8000
+
+# Terminal 2 — Frontend
+make front
+# → Next.js on http://localhost:3000 (proxies /api/* to FastAPI)
 ```
 
-
-| Feature               | Description                                                       |
-| --------------------- | ----------------------------------------------------------------- |
-| Streaming             | Tokens affiches un par un en temps reel                           |
-| Tool panels           | Collapsibles avec spinner → check, input SQL, output table        |
-| Actions               | Boutons **Copy** / **CSV** / **JSON** sur chaque resultat         |
-| Download              | Liens de telechargement pour les exports agent                    |
-| Charts inline         | Graphiques Seaborn affiches directement dans le chat              |
-| Provider switch       | Dropdown provider + modele, switch a chaud sans reload            |
-| Ollama detection      | Modeles locaux detectes dynamiquement via API                     |
-| HITL toggle           | Switch on/off dans le header, approbation SQL avant execution     |
-| Context sidebar       | Schema cache, user context, scratchpad avec rewards +1/-1         |
-| Dynamic prompt viewer | Visualisation temps reel du prompt envoye au LLM                  |
-| Historique complet    | Tool calls et resultats persistes au reload de page               |
-| Design                | Fira Code, DM Mono, dark theme #111, sidebar context engineering  |
+| Feature           | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| Streaming SSE     | Tokens streames via fetch + ReadableStream                    |
+| Tool panels       | Accordeons collapsibles avec status running/done              |
+| Charts inline     | Graphiques Seaborn affiches directement dans le chat          |
+| Provider switch   | Dropdown provider + modele, switch a chaud sans reload        |
+| HITL modal        | Approve / Edit / Reject avant execution SQL                   |
+| Context sidebar   | Schema cache, user context CRUD, scratchpad avec rewards      |
+| Recalled memories | Section recall avec scores (hybrid BM25+vector)               |
+| Markdown          | react-markdown avec tables, code blocks                       |
+| Design            | Tailwind CSS 4, dark theme zinc-950, responsive layout        |
 
 
 ### CLI Interactif
@@ -342,24 +361,28 @@ make dump   # Export PG depuis Docker → data/neo_dump.sql
 src/
 │
 ├── 🤖 agent/
-│   ├── factory.py             # Factory Deep Agent + 9-middleware stack + interrupt_on
+│   ├── factory.py             # Factory Deep Agent + 7-middleware stack + interrupt_on
 │   └── prompts.py             # System prompt SQL (francais, scratchpad guidelines, reward)
 │
 ├── 💻 cli/
 │   └── chat.py                # Chat terminal Rich (sync streaming)
 │
-├── ⚙️ config.py                # Settings Pydantic (env vars, HITL toggle, middleware config)
+├── ⚙️ config.py                # Settings Pydantic (env vars, HITL, recall, hybrid search)
 ├── 📋 constants.py             # Enums (LLMProvider, SSEEventType, SQL keywords)
 │
 ├── 🧠 context/
-│   ├── store.py               # ContextStore per-thread (schema, ctx, scratchpad+reward, summary)
+│   ├── store.py               # ContextStore per-thread (schema, ctx, scratchpad, recall)
+│   ├── hybrid_search.py       # BM25+vector hybrid search with RRF fusion (ParadeDB)
+│   ├── pg_sync.py             # Sync wrappers for AsyncPostgresStore operations
 │   └── thread_var.py          # ContextVar for passing thread_id to tools
 │
 ├── 🛡️ middleware/
-│   ├── logging_mw.py          # AgentMiddleware — sync+async logging avec timing
 │   ├── sql_guard.py           # AgentMiddleware — bloque requetes destructives
 │   ├── schema_cache.py        # @wrap_tool_call — cache get_database_schema results
-│   └── context_injection.py   # @dynamic_prompt — injecte schema+ctx+scratchpad+summary
+│   └── context_injection.py   # @dynamic_prompt — injecte schema+ctx+scratchpad+recall
+│
+├── 💾 persistence/
+│   └── pg.py                  # AsyncPostgresStore + AsyncPostgresSaver + BM25 index
 │
 ├── 🔒 sandbox/
 │   ├── app.py                 # Lifecycle sandbox Modal (singleton, auto-recreate on stale)
@@ -371,9 +394,8 @@ src/
 │       └── analysis.py        # Standalone pandas analysis (runs in sandbox)
 │
 ├── 🌐 server/
-│   ├── app.py                 # FastAPI (SSE, /history, /context, /hitl, /resume, /prompt-preview)
-│   └── static/
-│       └── index.html         # Frontend (context sidebar, HITL modal, prompt viewer)
+│   ├── app.py                 # FastAPI (SSE, /context, /hitl, /resume, /search)
+│   └── static/                # Legacy vanilla JS frontend
 │
 ├── 📡 streaming/
 │   ├── events.py              # SSE event dataclasses (text-delta, tool-call-*, interrupt-request)
@@ -381,7 +403,7 @@ src/
 │
 └── 🔧 tools/
     ├── _helpers.py            # Shared: run_sandbox_script, store_file, fetch_csv
-    ├── schemas.py             # Pydantic v2 strict schemas (all 9 tool inputs)
+    ├── schemas.py             # Pydantic v2 strict schemas (all tool inputs)
     ├── schema_tool.py         # @tool — introspection schema (tables, colonnes)
     ├── sql_tool.py            # @tool — execution SQL via PG gateway → markdown
     ├── export_tool.py         # @tool — export CSV/JSON avec download link
@@ -389,6 +411,30 @@ src/
     ├── analysis_tool.py       # @tool — stats pandas (describe, corr, distributions)
     ├── scratchpad_tool.py     # @tool — agent session notes with reward awareness
     └── context_tool.py        # @tool — agent persists verified facts to durable context
+
+frontend/                       # Next.js 16 + React 19 + Tailwind CSS 4
+├── next.config.ts              # Proxy /api/* → FastAPI :8000
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx          # Root layout (Inter font, Tailwind globals)
+│   │   ├── page.tsx            # Main page (chat + sidebar + HITL)
+│   │   └── globals.css         # Tailwind directives + prose overrides
+│   ├── components/
+│   │   ├── ChatPanel.tsx       # Chat zone (messages + input)
+│   │   ├── MessageBubble.tsx   # User/assistant message with ReactMarkdown
+│   │   ├── ToolStep.tsx        # Collapsible tool call accordion
+│   │   ├── ContextSidebar.tsx  # Context engineering sidebar (full CRUD)
+│   │   ├── RecallSection.tsx   # Recalled memories with scores
+│   │   ├── HitlModal.tsx       # HITL approval modal (approve/edit/reject)
+│   │   └── ProviderSelect.tsx  # Provider + model dropdowns
+│   ├── hooks/
+│   │   ├── useSession.ts       # Session token management
+│   │   ├── useSSE.ts           # SSE streaming via fetch + ReadableStream
+│   │   ├── useContext.ts       # Context CRUD (add/remove/reward/search)
+│   │   └── useHitl.ts          # HITL status + toggle + decide
+│   └── lib/
+│       ├── api.ts              # Fetch wrapper with auth headers
+│       └── types.ts            # TypeScript interfaces
 ```
 
 ---
@@ -479,5 +525,5 @@ make format    # Ruff formatter
 
 ---
 
-**Arthur Edmond** · [Swapn](https://swapn.com)
+**Arthur Edmond** · [Swapn]
 Built with LangChain Deep Agents, Modal, and an obsession for clean middleware stacks

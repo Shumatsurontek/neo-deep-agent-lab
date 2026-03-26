@@ -64,6 +64,21 @@ def interrupt_request(
     )
 
 
+def metrics_event(
+    ttft_ms: float, tps: float, total_tokens: int, elapsed_ms: float
+) -> SSEEvent:
+    """Create a metrics event with TTFT and TPS data."""
+    return SSEEvent(
+        type=SSEEventType.METRICS,
+        data={
+            "ttft_ms": round(ttft_ms, 1),
+            "tps": round(tps, 1),
+            "total_tokens": total_tokens,
+            "elapsed_ms": round(elapsed_ms, 1),
+        },
+    )
+
+
 def done_event() -> SSEEvent:
     """Create a done event marking the end of the stream."""
     return SSEEvent(type=SSEEventType.DONE)

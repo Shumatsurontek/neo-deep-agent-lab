@@ -11,6 +11,7 @@ Key: only AI message tokens emit text-delta. Tool result messages
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
@@ -19,6 +20,7 @@ from src.streaming.events import (
     SSEEventType,
     done_event,
     error_event,
+    metrics_event,
     text_delta,
     tool_call_end,
     tool_call_start,
@@ -101,17 +103,43 @@ async def encode_stream_async(
     Yields:
         Tuples of (sse_line, text_content). text_content is non-empty only for
         text-delta events, allowing callers to accumulate the full response.
+
+    Emits a ``metrics`` event before ``done`` with TTFT and TPS.
     """
     acc = _ToolArgsAccumulator()
+    t_start = time.perf_counter()
+    t_first_token: float | None = None
+    token_count = 0
+
     try:
         async for chunk in stream:
             for event in _map_chunk_to_events(chunk, acc):
                 is_text = event.type == SSEEventType.TEXT_DELTA
                 text_content = event.data.get("content", "") if is_text else ""
+
+                # Track TTFT — first text token
+                if is_text and text_content and t_first_token is None:
+                    t_first_token = time.perf_counter()
+
+                # Count output tokens (approximate: split by whitespace-ish chunks)
+                if is_text and text_content:
+                    token_count += 1
+
                 yield event.to_sse(), text_content
     except Exception as exc:
         yield error_event(str(exc)).to_sse(), ""
     finally:
+        elapsed = time.perf_counter() - t_start
+        elapsed_ms = elapsed * 1000
+        ttft_ms = ((t_first_token - t_start) * 1000) if t_first_token else elapsed_ms
+
+        # TPS: tokens per second (text-delta events / streaming duration after first token)
+        streaming_duration = (
+            (time.perf_counter() - t_first_token) if t_first_token else elapsed
+        )
+        tps = (token_count / streaming_duration) if streaming_duration > 0 else 0
+
+        yield metrics_event(ttft_ms, tps, token_count, elapsed_ms).to_sse(), ""
         yield done_event().to_sse(), ""
 
 

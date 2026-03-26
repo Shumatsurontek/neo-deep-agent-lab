@@ -12,7 +12,8 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from src.agent.factory import create_sql_agent
-from src.sandbox.app import terminate_sandbox
+from src.common import get_logger, setup_logging
+from src.sandbox.app import terminate_sandbox  # noqa: F401 — used in finally block
 
 console = Console()
 
@@ -31,17 +32,26 @@ L'agent va générer et exécuter des requêtes SQL pour y répondre.
 
 def main() -> None:
     """Entry point for the CLI chat."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(name)s] %(message)s",
-        handlers=[logging.FileHandler("agent.log")],
+    setup_logging(mode="dev", level="INFO")
+    # Also log to file for CLI usage
+    file_handler = logging.FileHandler("agent.log")
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(name)s] %(levelname)s %(message)s")
     )
+    get_logger("").parent.addHandler(file_handler)  # type: ignore[union-attr]
 
     console.print(Markdown(WELCOME_MESSAGE))
 
-    console.print("[dim]Initialisation de l'agent et du sandbox Modal...[/dim]")
+    console.print("[dim]Initialisation de l'agent...[/dim]")
     try:
-        agent = create_sql_agent()
+        # CLI uses in-memory persistence (no PG required)
+        from langgraph.checkpoint.memory import MemorySaver
+        from langgraph.store.memory import InMemoryStore
+
+        agent = create_sql_agent(
+            store=InMemoryStore(),
+            checkpointer=MemorySaver(),
+        )
     except Exception as exc:
         console.print(f"[red]Erreur d'initialisation : {exc}[/red]")
         sys.exit(1)

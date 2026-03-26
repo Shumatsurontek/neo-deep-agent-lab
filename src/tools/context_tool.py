@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from src.context.store import get_store
-from src.context.thread_var import current_thread_id
+from src.context.store import get_current_store
 from src.tools.schemas import PersistContextInput
 
 
@@ -39,12 +38,8 @@ def persist_context(fact: str) -> str:
     Returns:
         Confirmation avec le nombre total d'entrees contexte.
     """
-    thread_id = current_thread_id.get()
-    store = get_store(thread_id)
+    store = get_current_store()
     store.add_context(fact, source="agent")
     total = len(store.user_context)
     agent_count = sum(1 for c in store.user_context if c.source == "agent")
-    return (
-        f"Fait persiste dans le contexte ({total} entrees, "
-        f"dont {agent_count} par l'agent)."
-    )
+    return f"Fait persiste dans le contexte ({total} entrees, dont {agent_count} par l'agent)."

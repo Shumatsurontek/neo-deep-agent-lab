@@ -26,12 +26,48 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OLLAMA_BASE_URL: str = "http://localhost:11434"
 
+    # Persistence (local PG for store + checkpointer — separate from Modal sandbox PG)
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:17/neo_agent"
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_MODE: str = "dev"  # "dev" for human-readable, "json" for structured JSON
+
+    # Embeddings (for PostgresStore semantic search)
+    EMBEDDING_MODEL: str = "openai:text-embedding-3-small"
+    EMBEDDING_DIMS: int = 1536
+
+    # Session
+    SESSION_TTL_SECONDS: int = 3600  # 1h
+
     # Middleware
     CONTEXT_EDITING_TRIGGER: int = 80_000  # tokens threshold to clear old tool results
     TOOL_CALL_LIMIT_PER_RUN: int = 20  # max tool calls per agent run (safety)
     HITL_ENABLED: bool = (
         True  # human-in-the-loop approval for SQL execution (toggle via /hitl)
     )
+
+    # Short memory recall (semantic search injected before each LLM call)
+    RECALL_ENABLED: bool = True
+    RECALL_LIMIT: int = 3  # max results from semantic search
+    RECALL_MIN_SCORE: float = 0.1  # minimum similarity score to include
+    RECALL_MAX_CHARS: int = 2000  # total character budget for recalled memories
+
+    # Hybrid search (BM25 + vector via ParadeDB pg_search)
+    HYBRID_SEARCH_ENABLED: bool = True
+    HYBRID_VECTOR_WEIGHT: float = 0.6
+    HYBRID_BM25_WEIGHT: float = 0.4
+    HYBRID_RRF_K: int = 60  # Reciprocal Rank Fusion constant
+
+    # RAG
+    RAG_CHUNK_MAX_TOKENS: int = 400
+    RAG_CHUNK_OVERLAP: int = 50
+    RAG_RECALL_LIMIT: int = 3
+    RAG_RECALL_MIN_SCORE: float = 0.2
+
+    # Clerk
+    CLERK_DOMAIN: str = ""  # e.g. "your-app.clerk.accounts.dev"
+    CLERK_ENABLED: bool = False
 
     # SQL
     SQL_TIMEOUT_MS: int = DEFAULT_SQL_TIMEOUT_MS
