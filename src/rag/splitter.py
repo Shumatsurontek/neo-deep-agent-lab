@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Union
+
 from langchain_core.documents import Document
 from langchain_text_splitters import (
     HTMLHeaderTextSplitter,
@@ -39,7 +41,9 @@ def _base_splitter() -> RecursiveCharacterTextSplitter:
     )
 
 
-def get_splitter(mime_type: str) -> TextSplitter:
+def get_splitter(
+    mime_type: str,
+) -> Union[TextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter]:
     """Return the appropriate LangChain splitter for the given MIME type."""
     if mime_type == "text/markdown":
         return MarkdownHeaderTextSplitter(headers_to_split_on=_MD_HEADERS)
@@ -66,16 +70,20 @@ def split_documents(
             chunks = splitter.split_text(doc.page_content)
             # chunks are Document objects with metadata from headers
             if isinstance(chunks, list) and chunks:
-                if isinstance(chunks[0], Document):
-                    for chunk in chunks:
+                doc_chunks = [c for c in chunks if isinstance(c, Document)]
+                if doc_chunks:
+                    for chunk in doc_chunks:
                         chunk.metadata = {**doc.metadata, **chunk.metadata}
-                    split_docs.extend(chunks)
+                    split_docs.extend(doc_chunks)
                 else:
                     # Fallback: split_text returned strings, wrap them
-                    for i, chunk_text in enumerate(chunks):
+                    str_chunks: list[str] = [
+                        c if isinstance(c, str) else c.page_content for c in chunks
+                    ]
+                    for i, text in enumerate(str_chunks):
                         split_docs.append(
                             Document(
-                                page_content=chunk_text,
+                                page_content=text,
                                 metadata={**doc.metadata, "chunk_index": i},
                             )
                         )
@@ -83,7 +91,9 @@ def split_documents(
         base = _base_splitter()
         final = base.split_documents(split_docs) if split_docs else []
     else:
-        final = splitter.split_documents(docs)
+        # Plain text / other: use RecursiveCharacterTextSplitter (always a TextSplitter)
+        base = _base_splitter()
+        final = base.split_documents(docs)
 
     logger.info(
         "Split %d doc(s) → %d chunks (mime=%s, max_tokens=%d, overlap=%d)",

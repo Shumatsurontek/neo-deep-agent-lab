@@ -60,8 +60,10 @@ async def store_chunks(
         # Rough token estimate: 1 token ≈ 4 chars
         total_tokens += len(chunk.page_content) // 4
 
-    # Batch put
-    await store.abatch([store.aput(ns, key, val) for ns, key, val in items])
+    # Batch put using PutOp (abatch expects Op objects, not coroutines)
+    from langgraph.store.base import PutOp
+
+    await store.abatch([PutOp(ns, key, val) for ns, key, val in items])
 
     # Store document metadata
     meta_value = {

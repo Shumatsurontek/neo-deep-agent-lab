@@ -48,12 +48,14 @@ async def init_persistence() -> tuple[AsyncPostgresStore, AsyncPostgresSaver]:
         settings.DATABASE_URL,
         index=index_config,
     )
-    _pg_store = await _store_cm.__aenter__()
-    await _pg_store.setup()
+    pg_store: AsyncPostgresStore = await _store_cm.__aenter__()  # type: ignore[union-attr]
+    _pg_store = pg_store
+    await pg_store.setup()
 
     _saver_cm = AsyncPostgresSaver.from_conn_string(settings.DATABASE_URL)
-    _pg_saver = await _saver_cm.__aenter__()
-    await _pg_saver.setup()
+    pg_saver: AsyncPostgresSaver = await _saver_cm.__aenter__()  # type: ignore[union-attr]
+    _pg_saver = pg_saver
+    await pg_saver.setup()
 
     logger.info(
         "AsyncPostgresStore ready — embedding index: model=%s, dims=%d, fields=%s",
@@ -76,7 +78,7 @@ async def init_persistence() -> tuple[AsyncPostgresStore, AsyncPostgresSaver]:
     except Exception as exc:
         logger.warning("BM25 connection pool setup skipped: %s", exc)
 
-    return _pg_store, _pg_saver
+    return pg_store, pg_saver
 
 
 def get_pg_store() -> AsyncPostgresStore:
