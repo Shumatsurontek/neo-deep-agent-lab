@@ -14,6 +14,7 @@ class SSEEventType(str, Enum):
     INTERRUPT_REQUEST = "interrupt-request"
     ERROR = "error"
     DONE = "done"
+    METRICS = "metrics"
 
 
 class SQLKeyword(str, Enum):

@@ -39,6 +39,24 @@ class ContextEntry:
 
 
 @dataclass
+class RecalledMemory:
+    """A memory item retrieved via semantic search (short memory recall)."""
+
+    text: str
+    score: float
+    source_thread: str
+    timestamp: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "text": self.text,
+            "score": self.score,
+            "source_thread": self.source_thread,
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
 class ContextStore:
     """Holds all context for a single conversation thread."""
 
@@ -47,6 +65,9 @@ class ContextStore:
     user_context: list[ContextEntry] = field(default_factory=list)
     scratchpad: list[ScratchpadNote] = field(default_factory=list)
     summary: str | None = None
+    # Ephemeral — regenerated each turn by recall middleware, NOT persisted.
+    last_recall: list[RecalledMemory] = field(default_factory=list)
+    _last_recall_query: str | None = field(default=None, repr=False)
 
     def add_context(
         self, text: str, source: Literal["user", "agent"] = "user"
@@ -89,24 +110,65 @@ class ContextStore:
             "avg_score": sum(scores) / len(scores),
         }
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the entire store to a JSON-safe dict."""
+        return {
+            "schema_cache": self.schema_cache,
+            "schema_cached_at": self.schema_cached_at,
+            "user_context": [c.to_dict() for c in self.user_context],
+            "scratchpad": [n.to_dict() for n in self.scratchpad],
+            "summary": self.summary,
+        }
 
-_stores: dict[str, ContextStore] = {}
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ContextStore:
+        """Reconstruct a ContextStore from a serialized dict."""
+        store = cls()
+        store.schema_cache = data.get("schema_cache", {})
+        store.schema_cached_at = data.get("schema_cached_at")
+        store.user_context = [
+            ContextEntry(
+                text=c["text"],
+                source=c.get("source", "user"),
+                timestamp=c.get("timestamp", 0),
+            )
+            for c in data.get("user_context", [])
+        ]
+        store.scratchpad = [
+            ScratchpadNote(
+                note=n["note"],
+                score=n.get("score", 0),
+                timestamp=n.get("timestamp", 0),
+            )
+            for n in data.get("scratchpad", [])
+        ]
+        store.summary = data.get("summary")
+        return store
 
 
-def get_store(thread_id: str) -> ContextStore:
-    """Get or create the context store for a thread."""
-    if thread_id not in _stores:
-        _stores[thread_id] = ContextStore()
-    return _stores[thread_id]
+def get_current_store() -> ContextStore:
+    """Return the ContextStore for the current thread (via session lookup).
+
+    Used by tools and middleware that don't have direct access to the session
+    object but can read the current thread_id from the ContextVar.
+    Falls back to a throwaway ContextStore if no session is found (e.g. in tests).
+    """
+    from src.context.thread_var import current_thread_id
+    from src.server.session import get_session_by_thread
+
+    thread_id = current_thread_id.get()
+    session = get_session_by_thread(thread_id)
+    if session is not None:
+        return session.context_store
+    return ContextStore()
 
 
-def reset_store(thread_id: str) -> None:
-    """Clear the context store for a thread."""
-    _stores.pop(thread_id, None)
+def cache_schema(_thread_id: str, key: str, value: str) -> None:
+    """Cache a schema result for the current thread's store.
 
-
-def cache_schema(thread_id: str, key: str, value: str) -> None:
-    """Cache a schema result for a thread."""
-    store = get_store(thread_id)
+    The ``_thread_id`` parameter is kept for call-site compatibility but
+    ignored — the store is resolved from the current ContextVar session.
+    """
+    store = get_current_store()
     store.schema_cache[key] = value
     store.schema_cached_at = time.time()

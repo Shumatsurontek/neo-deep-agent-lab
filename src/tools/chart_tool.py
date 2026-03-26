@@ -7,16 +7,16 @@ The resulting PNG is stored in-memory and served via /download/<file_id>.
 from __future__ import annotations
 
 import base64
-import logging
 
 from langchain_core.tools import tool
 
+from src.common import get_logger
 from src.config import settings
 from src.sandbox.pg import run_query_csv
 from src.tools._helpers import run_sandbox_script, sanitize_input, store_file
 from src.tools.schemas import GenerateChartInput
 
-logger = logging.getLogger("neo-deep-agent-lab")
+logger = get_logger("tools.chart")
 
 
 @tool(args_schema=GenerateChartInput)
@@ -75,10 +75,7 @@ def generate_chart(
     filename = _build_filename(title)
     file_id, full_name = store_file(png_bytes, filename, "image/png")
 
-    return (
-        f"Chart genere : **{title}** ({chart_type})\n"
-        f"Telecharger : /download/{file_id}/{full_name}"
-    )
+    return f"Chart genere : **{title}** ({chart_type})\nTelecharger : /download/{file_id}/{full_name}"
 
 
 def _handle_chart_error(stderr: str) -> str:

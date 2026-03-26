@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from src.context.store import get_store
-from src.context.thread_var import current_thread_id
+from src.context.store import get_current_store
 from src.tools.schemas import ScratchpadInput
 
 
@@ -36,8 +35,7 @@ def write_scratchpad(note: str) -> str:
     Returns:
         Confirmation avec le nombre total de notes et stats reward.
     """
-    thread_id = current_thread_id.get()
-    store = get_store(thread_id)
+    store = get_current_store()
     store.add_note(note)
     stats = store.reward_summary()
     return (

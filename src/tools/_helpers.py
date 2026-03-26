@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 
+from src.common import get_logger
 from src.config import settings
 from src.sandbox.app import exec_in_sandbox
 from src.sandbox.pg import run_query_csv
 from src.tools.export_tool import _file_store
 
-logger = logging.getLogger("neo-deep-agent-lab")
+logger = get_logger("tools.helpers")
 
 # Path where sandbox scripts are mounted inside the Modal image.
 SANDBOX_SCRIPTS_DIR = "/opt/scripts"
@@ -53,10 +53,7 @@ def run_sandbox_script(
         (stdout, stderr, exit_code)
     """
     quoted_args = " ".join(shell_quote(a) for a in args)
-    cmd = (
-        f"echo {shell_quote(csv_data)} | "
-        f"python3 {SANDBOX_SCRIPTS_DIR}/{script_name} {quoted_args}"
-    )
+    cmd = f"echo {shell_quote(csv_data)} | python3 {SANDBOX_SCRIPTS_DIR}/{script_name} {quoted_args}"
     return exec_in_sandbox(cmd)
 
 

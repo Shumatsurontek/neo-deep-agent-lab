@@ -1,0 +1,19 @@
+:root {
+    --bg-default: #111;
+    --bg-paper: #050404;
+    --bg-secondary: #1c1c1c;
+    --bg-elevated: #222;
+    --text-primary: #e0e0e0;
+    --text-secondary: #767676;
+    --text-bright: #f2f2f2;
+    --border-primary: #292929;
+    --border-secondary: #3a3a3a;
+    --accent-purple: #a77dff;
+    --accent-green: #8ae06c;
+    --accent-red: #f56868;
+    --accent-yellow: #f1df38;
+    --accent-rose: #d15168;
+    --accent-lime: #e9f4a4;
+    --accent-blue: #6cb4ef;
+    --accent-orange: #f0a050;
+}

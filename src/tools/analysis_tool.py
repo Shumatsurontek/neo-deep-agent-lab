@@ -5,16 +5,15 @@ Delegates computation to /opt/scripts/analysis.py (baked into the Modal image).
 
 from __future__ import annotations
 
-import logging
-
 from langchain_core.tools import tool
 
+from src.common import get_logger
 from src.config import settings
 from src.sandbox.pg import run_query_csv
 from src.tools._helpers import run_sandbox_script, sanitize_input
 from src.tools.schemas import AnalyzeQueryInput
 
-logger = logging.getLogger("neo-deep-agent-lab")
+logger = get_logger("tools.analysis")
 
 
 @tool(args_schema=AnalyzeQueryInput)

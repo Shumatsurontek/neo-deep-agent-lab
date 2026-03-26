@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* ── Bittensor-inspired Design Tokens ────────────────────────────── */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Fira Code", "DM Mono", ui-monospace, monospace;
+
+  --color-bg: #0a0a0a;
+  --color-bg-paper: #0e0e0e;
+  --color-bg-secondary: #151515;
+  --color-bg-elevated: #1a1a1a;
+  --color-text: #b0b0b0;
+  --color-text-secondary: #555;
+  --color-text-bright: #e8e8e8;
+  --color-border: #1e1e1e;
+  --color-border-secondary: #2a2a2a;
+  --color-purple: #a77dff;
+  --color-green: #7cd664;
+  --color-red: #e85555;
+  --color-yellow: #d4c432;
+  --color-rose: #c04858;
+  --color-lime: #d4e888;
+  --color-blue: #5eaaee;
+  --color-orange: #e09040;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-mono);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ultra-thin borders globally */
+.border-border { border-color: var(--color-border) !important; }
+
+/* Scrollbar — nearly invisible */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* Code blocks */
+pre, code {
+  font-family: var(--font-mono);
+}
+pre {
+  background: var(--color-bg);
+  border: 0.5px solid var(--color-border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 11px;
+  line-height: 1.6;
+}
+code {
+  font-size: 11px;
+}
+
+/* Markdown in assistant messages */
+.prose { font-weight: 300; letter-spacing: 0.01em; }
+.prose h1, .prose h2, .prose h3 {
+  color: var(--color-text-bright);
+  margin: 10px 0 4px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.prose h1 { font-size: 15px; }
+.prose h2 { font-size: 14px; }
+.prose h3 { font-size: 13px; }
+.prose p { margin: 4px 0; }
+.prose ul, .prose ol { margin: 4px 0; padding-left: 18px; }
+.prose li { margin: 2px 0; }
+.prose table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 11px; }
+.prose th, .prose td { border: 0.5px solid var(--color-border); padding: 3px 8px; text-align: left; }
+.prose th { background: var(--color-bg-secondary); color: var(--color-text-bright); font-weight: 400; }
+.prose a { color: var(--color-purple); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+.prose blockquote { border-left: 2px solid var(--color-border-secondary); padding-left: 10px; color: var(--color-text-secondary); }
+.prose strong { color: var(--color-text-bright); font-weight: 500; }
+.prose code {
+  background: var(--color-bg);
+  border: 0.5px solid var(--color-border);
+  border-radius: 2px;
+  padding: 1px 4px;
+  font-size: 11px;
+}
+
+/* Yoopta editor dark theme */
+.yoopta-dark [data-yoopta-editor] {
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.yoopta-dark [data-yoopta-editor] [data-placeholder]::before {
+  color: var(--color-text-secondary) !important;
+  opacity: 0.5;
+}
+.yoopta-dark [data-yoopta-editor] code {
+  background: var(--color-bg);
+  border: 0.5px solid var(--color-border);
+  border-radius: 2px;
+  padding: 1px 4px;
+  font-size: 11px;
+}
+.yoopta-dark [data-yoopta-editor] pre {
+  background: var(--color-bg) !important;
+}
+.yoopta-dark [data-yoopta-editor] h1,
+.yoopta-dark [data-yoopta-editor] h2,
+.yoopta-dark [data-yoopta-editor] h3 {
+  color: var(--color-text-bright);
+}
+.yoopta-dark [data-yoopta-editor] blockquote {
+  border-left: 2px solid var(--color-border-secondary);
+  padding-left: 10px;
+  color: var(--color-text-secondary);
+}
+.yoopta-dark [data-yoopta-editor] table {
+  border-collapse: collapse;
+}
+.yoopta-dark [data-yoopta-editor] th,
+.yoopta-dark [data-yoopta-editor] td {
+  border: 0.5px solid var(--color-border);
+  padding: 3px 8px;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.15s ease-out; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Select dropdowns */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23555' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 18px !important;
+}
+select option {
+  background: #151515;
+  color: #b0b0b0;
+}
