@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { ToolStep as ToolStepType } from "../../types";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../ui/collapsible";
+import { ChevronRight, Copy, Download, Loader2 } from "lucide-react";
 
 export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
   const [open, setOpen] = useState(true);
@@ -58,185 +66,131 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
     downloadFile(json, getFilename(tool.input, "json"), "application/json");
   }
 
-  const accentColor = isRunning ? "var(--color-yellow)" : isError ? "var(--color-red)" : "var(--color-green)";
+  const statusColor = isRunning
+    ? "text-cb-yellow border-cb-yellow/20 bg-cb-yellow-muted"
+    : isError
+    ? "text-cb-red border-cb-red/20 bg-cb-red-muted"
+    : "text-cb-green border-cb-green/20 bg-cb-green-muted";
 
   return (
-    <div className="my-2 animate-fade-in" style={{ borderLeft: `1.5px solid ${accentColor}`, paddingLeft: "10px" }}>
-      {/* Summary row */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 py-1 text-left group"
-      >
-        <span
-          className="text-[11px] transition-transform"
-          style={{ color: "var(--color-text-secondary)", transform: open ? "rotate(90deg)" : "none" }}
-        >
-          &#x25B8;
-        </span>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="rounded-2xl border border-border bg-surface overflow-hidden animate-fade-in">
+        {/* Summary row */}
+        <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors cursor-pointer">
+          <ChevronRight
+            className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+          />
 
-        {isRunning && (
-          <svg className="w-2.5 h-2.5 shrink-0 animate-spin" style={{ color: accentColor }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" d="M12 2a10 10 0 0 1 10 10" />
-          </svg>
-        )}
-
-        <span
-          className="font-mono uppercase tracking-widest"
-          style={{ fontSize: "11px", fontWeight: 400, letterSpacing: "0.12em", color: accentColor }}
-        >
-          {tool.name}
-        </span>
-
-        {badge && (
-          <span className="ml-auto font-mono" style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
-            {badge}
-          </span>
-        )}
-      </button>
-
-      {/* Body */}
-      {open && (
-        <div className="pb-1 space-y-1.5" style={{ marginTop: "2px" }}>
-          {inputDisplay && (
-            <div>
-              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
-                input
-              </div>
-              <pre
-                className="font-mono whitespace-pre-wrap break-all"
-                style={{
-                  fontSize: "11px",
-                  color: "var(--color-purple)",
-                  background: "var(--color-bg)",
-                  border: "0.5px solid var(--color-border)",
-                  borderRadius: "2px",
-                  padding: "6px 8px",
-                  lineHeight: "1.5",
-                }}
-              >
-                {inputDisplay}
-              </pre>
-            </div>
+          {isRunning && (
+            <Loader2 className="w-4 h-4 text-cb-yellow animate-spin" />
           )}
 
-          {tool.output && (
-            <div>
-              <div className="font-mono uppercase tracking-widest" style={{ fontSize: "10px", color: "var(--color-text-secondary)", letterSpacing: "0.15em", marginBottom: "3px" }}>
-                output
-              </div>
+          <Badge variant="outline" className={`text-[11px] h-6 px-2.5 uppercase tracking-wider font-semibold rounded-lg ${statusColor}`}>
+            {tool.name}
+          </Badge>
 
-              {parsed ? (
-                <div className="overflow-auto" style={{ maxHeight: "240px", border: "0.5px solid var(--color-border)", borderRadius: "2px" }}>
-                  <table className="w-full border-collapse font-mono" style={{ fontSize: "10px" }}>
-                    <thead>
-                      <tr>
-                        {parsed.headers.map((h, i) => (
-                          <th
-                            key={i}
-                            className="font-mono text-left font-normal sticky top-0"
-                            style={{
-                              fontSize: "10px",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.08em",
-                              color: "var(--color-text-secondary)",
-                              background: "var(--color-bg-secondary)",
-                              padding: "4px 8px",
-                              borderBottom: "0.5px solid var(--color-border)",
-                            }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parsed.rows.map((row, ri) => (
-                        <tr key={ri} className="hover:bg-purple/[0.03]">
-                          {parsed.headers.map((_, ci) => {
-                            const cell = row[ci] || "";
-                            const display = cell.length > 100 ? cell.slice(0, 100) + "\u2026" : cell;
-                            return (
-                              <td
-                                key={ci}
-                                title={cell}
-                                className="font-mono overflow-hidden text-ellipsis whitespace-nowrap"
-                                style={{
-                                  padding: "3px 8px",
-                                  color: "var(--color-text)",
-                                  borderBottom: "0.5px solid var(--color-border)",
-                                  maxWidth: "220px",
-                                  fontSize: "10px",
-                                }}
-                              >
-                                {display}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          {badge && (
+            <span className="ml-auto text-xs text-muted-foreground font-medium">
+              {badge}
+            </span>
+          )}
+        </CollapsibleTrigger>
+
+        {/* Body */}
+        <CollapsibleContent>
+          <div className="px-4 pb-4 space-y-3 border-t border-border">
+            {inputDisplay && (
+              <div className="pt-3">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-widest mb-2 font-semibold">
+                  Input
                 </div>
-              ) : tool.output.includes("/download/") ? (
-                <DownloadLink output={tool.output} />
-              ) : (
-                <pre
-                  className="font-mono whitespace-pre-wrap break-all overflow-y-auto"
-                  style={{
-                    fontSize: "11px",
-                    color: isError ? "var(--color-red)" : "var(--color-text)",
-                    background: "var(--color-bg)",
-                    border: "0.5px solid var(--color-border)",
-                    borderRadius: "2px",
-                    padding: "6px 8px",
-                    lineHeight: "1.5",
-                    maxHeight: "200px",
-                  }}
-                >
-                  {tool.output.length > 3000 ? tool.output.slice(0, 3000) + "\n\u2026" : tool.output}
+                <pre className="text-[13px] text-cb-blue whitespace-pre-wrap break-all bg-background rounded-xl border border-border px-4 py-3 leading-relaxed font-mono">
+                  {inputDisplay}
                 </pre>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-1" style={{ marginTop: "4px" }}>
-                <ActionBtn onClick={handleCopy}>{copied ? "copied" : "copy"}</ActionBtn>
-                <ActionBtn onClick={handleDownloadCSV}>csv</ActionBtn>
-                <ActionBtn onClick={handleDownloadJSON}>json</ActionBtn>
               </div>
-            </div>
-          )}
+            )}
 
-          {isRunning && !tool.output && (
-            <div className="font-mono italic" style={{ fontSize: "11px", color: "var(--color-yellow)", opacity: 0.6 }}>
-              executing...
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+            {tool.output && (
+              <div>
+                <div className="text-[11px] text-muted-foreground uppercase tracking-widest mb-2 font-semibold">
+                  Output
+                </div>
 
-function ActionBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }): React.ReactElement {
-  return (
-    <button
-      onClick={onClick}
-      className="font-mono uppercase tracking-wider transition-all"
-      style={{
-        fontSize: "10px",
-        letterSpacing: "0.1em",
-        color: "var(--color-text-secondary)",
-        padding: "2px 6px",
-        border: "0.5px solid var(--color-border)",
-        borderRadius: "2px",
-        background: "transparent",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-text-bright)"; e.currentTarget.style.borderColor = "var(--color-border-secondary)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-secondary)"; e.currentTarget.style.borderColor = "var(--color-border)"; }}
-    >
-      {children}
-    </button>
+                {parsed ? (
+                  <div className="overflow-auto max-h-64 rounded-xl border border-border">
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead>
+                        <tr>
+                          {parsed.headers.map((h, i) => (
+                            <th
+                              key={i}
+                              className="text-left text-[11px] uppercase tracking-wider font-semibold text-muted-foreground bg-secondary sticky top-0 px-4 py-2.5 border-b border-border"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsed.rows.map((row, ri) => (
+                          <tr key={ri} className="hover:bg-secondary/30 transition-colors">
+                            {parsed.headers.map((_, ci) => {
+                              const cell = row[ci] || "";
+                              const display = cell.length > 100 ? cell.slice(0, 100) + "\u2026" : cell;
+                              return (
+                                <td
+                                  key={ci}
+                                  title={cell}
+                                  className="px-4 py-2 border-b border-border text-foreground/70 max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap"
+                                >
+                                  {display}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : tool.output.includes("/download/") ? (
+                  <DownloadLink output={tool.output} />
+                ) : (
+                  <pre
+                    className={`text-[13px] font-mono whitespace-pre-wrap break-all overflow-y-auto max-h-52 bg-background rounded-xl border border-border px-4 py-3 leading-relaxed ${
+                      isError ? "text-cb-red" : "text-foreground/70"
+                    }`}
+                  >
+                    {tool.output.length > 3000 ? tool.output.slice(0, 3000) + "\n\u2026" : tool.output}
+                  </pre>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 mt-3">
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleCopy}>
+                    <Copy className="w-3.5 h-3.5" />
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleDownloadCSV}>
+                    <Download className="w-3.5 h-3.5" />
+                    CSV
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleDownloadJSON}>
+                    <Download className="w-3.5 h-3.5" />
+                    JSON
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isRunning && !tool.output && (
+              <div className="text-sm text-cb-yellow/60 italic pt-3">
+                executing...
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
 
@@ -244,7 +198,7 @@ function DownloadLink({ output }: { output: string }): React.ReactElement {
   const match = output.match(/\/download\/([a-f0-9-]+)\/([^\s]+)/);
   if (!match) {
     return (
-      <pre className="font-mono" style={{ fontSize: "11px", color: "var(--color-text)", background: "var(--color-bg)", border: "0.5px solid var(--color-border)", borderRadius: "2px", padding: "6px 8px" }}>
+      <pre className="text-[13px] font-mono text-foreground/70 bg-background border border-border rounded-xl px-4 py-3">
         {output}
       </pre>
     );
@@ -255,37 +209,27 @@ function DownloadLink({ output }: { output: string }): React.ReactElement {
   const isImage = /\.(png|jpg|jpeg|svg)$/i.test(filename);
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-3">
       {isImage && (
         <img
           src={url}
           alt={filename}
-          className="max-w-full rounded"
-          style={{ border: "0.5px solid var(--color-border)" }}
+          className="max-w-full rounded-xl border border-border"
         />
       )}
       <a
         href={url}
         download
-        className="inline-flex items-center gap-1.5 font-mono no-underline transition-all"
-        style={{
-          fontSize: "10px",
-          color: "var(--color-text-bright)",
-          padding: "4px 10px",
-          border: "0.5px solid var(--color-border)",
-          borderRadius: "2px",
-        }}
+        className="inline-flex items-center gap-2 text-sm text-foreground font-medium px-4 py-2.5 border border-border rounded-xl hover:bg-secondary/50 transition-colors no-underline"
       >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
+        <Download className="w-4 h-4" />
         {filename}
       </a>
     </div>
   );
 }
 
-/* ── Helpers ─────────────────────────────────────── */
+/* -- Helpers -- */
 
 interface ParsedTable { headers: string[]; rows: string[][]; }
 

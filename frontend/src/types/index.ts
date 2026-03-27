@@ -58,6 +58,8 @@ export interface StreamMetrics {
   tps: number;
   total_tokens: number;
   elapsed_ms: number;
+  model?: string;
+  estimated_cost?: number;
 }
 
 export interface Message {

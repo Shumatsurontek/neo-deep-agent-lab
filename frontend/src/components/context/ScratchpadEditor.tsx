@@ -6,6 +6,8 @@ import { BulletedList, NumberedList } from "@yoopta/lists";
 import Code from "@yoopta/code";
 import { Bold, Italic, CodeMark } from "@yoopta/marks";
 import { html } from "@yoopta/exports";
+import { Button } from "../ui/button";
+import { Plus, Loader2 } from "lucide-react";
 
 const PLUGINS = [Paragraph, BulletedList, NumberedList, Code];
 const MARKS = [Bold, Italic, CodeMark];
@@ -31,8 +33,8 @@ export function ScratchpadEditor() {
   };
 
   return (
-    <div className="space-y-1.5">
-      <div className="border border-border rounded bg-bg-secondary p-2 max-h-32 overflow-y-auto">
+    <div className="space-y-3 mt-3">
+      <div className="border border-border rounded-xl bg-secondary/30 p-3 max-h-36 overflow-y-auto">
         <YooptaEditor
           editor={editor}
           plugins={PLUGINS}
@@ -40,13 +42,16 @@ export function ScratchpadEditor() {
           placeholder="Add a note..."
         />
       </div>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full h-9 text-xs gap-2 rounded-xl font-medium"
         onClick={handleSave}
         disabled={saving}
-        className="w-full px-2 py-1 bg-purple/20 text-purple rounded hover:bg-purple/30 font-mono text-[10px] disabled:opacity-50"
       >
-        {saving ? "saving..." : "Add Note"}
-      </button>
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+        {saving ? "Saving..." : "Add Note"}
+      </Button>
     </div>
   );
 }

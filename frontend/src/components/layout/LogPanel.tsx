@@ -1,4 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { X, Trash2 } from "lucide-react";
 
 interface LogEntry {
   timestamp: string;
@@ -8,11 +20,11 @@ interface LogEntry {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  DEBUG: "var(--color-text-secondary)",
-  INFO: "var(--color-blue)",
-  WARNING: "var(--color-orange)",
-  ERROR: "var(--color-red)",
-  CRITICAL: "var(--color-red)",
+  DEBUG: "text-muted-foreground",
+  INFO: "text-cb-blue",
+  WARNING: "text-cb-yellow",
+  ERROR: "text-cb-red",
+  CRITICAL: "text-cb-red",
 };
 
 export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () => void }): React.ReactElement | null {
@@ -89,114 +101,86 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
   });
 
   return (
-    <div className="flex flex-col" style={{ height: "200px", borderTop: "0.5px solid var(--color-border)", background: "var(--color-bg-paper)" }}>
+    <div className="flex flex-col h-[220px] border-t border-border bg-surface">
       {/* Header */}
-      <div className="flex items-center gap-2.5 shrink-0" style={{ padding: "4px 14px", borderBottom: "0.5px solid var(--color-border)" }}>
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-3 shrink-0 px-5 py-2.5 border-b border-border">
+        <div className="flex items-center gap-2.5">
           <div
-            className="rounded-full"
-            style={{ width: "5px", height: "5px", background: connected ? "var(--color-green)" : "var(--color-red)" }}
+            className="w-2 h-2 rounded-full"
+            style={{ background: connected ? "var(--color-cb-green)" : "var(--color-cb-red)" }}
           />
-          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-bright)", letterSpacing: "0.05em" }}>
-            logs
+          <span className="text-sm font-semibold text-foreground">
+            Logs
           </span>
+          <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+            {filtered.length}/{logs.length}
+          </Badge>
         </div>
 
-        <span className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-secondary)" }}>
-          {filtered.length}/{logs.length}
-        </span>
+        <Select value={levelFilter} onValueChange={(v) => { if (v) setLevelFilter(v); }}>
+          <SelectTrigger className="h-8 w-28 text-xs rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {["ALL", "DEBUG", "INFO", "WARNING", "ERROR"].map((l) => (
+              <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          value={levelFilter}
-          onChange={(e) => setLevelFilter(e.target.value)}
-          className="font-mono"
-          style={{
-            fontSize: "11px",
-            color: "var(--color-text)",
-            background: "var(--color-bg-secondary)",
-            border: "0.5px solid var(--color-border)",
-            borderRadius: "2px",
-            padding: "2px 16px 2px 6px",
-            outline: "none",
-          }}
-        >
-          {["ALL", "DEBUG", "INFO", "WARNING", "ERROR"].map((l) => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
-
-        <input
+        <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="filter..."
-          className="font-mono"
-          style={{
-            fontSize: "11px",
-            color: "var(--color-text)",
-            background: "var(--color-bg-secondary)",
-            border: "0.5px solid var(--color-border)",
-            borderRadius: "2px",
-            padding: "2px 8px",
-            width: "120px",
-            outline: "none",
-          }}
+          className="h-8 w-36 text-xs rounded-xl"
         />
 
-        <label className="flex items-center gap-1 font-mono ml-auto" style={{ fontSize: "10px", color: "var(--color-text-secondary)", cursor: "pointer" }}>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer ml-auto select-none">
           <input
             type="checkbox"
             checked={autoScroll}
             onChange={(e) => setAutoScroll(e.target.checked)}
-            style={{ width: "10px", height: "10px" }}
+            className="w-3.5 h-3.5 rounded border-border accent-cb-blue"
           />
-          auto-scroll
+          Auto-scroll
         </label>
 
-        <button
-          onClick={() => setLogs([])}
-          className="font-mono"
-          style={{ fontSize: "10px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-text)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-secondary)"; }}
-        >
-          clear
-        </button>
-        <button
-          onClick={onClose}
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-text)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-secondary)"; }}
-        >
-          &times;
-        </button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setLogs([])}>
+          <Trash2 className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto font-mono" style={{ fontSize: "11px", lineHeight: "20px", padding: "4px 14px" }}>
-        {filtered.length === 0 ? (
-          <div style={{ color: "var(--color-text-secondary)", fontStyle: "italic", padding: "12px 0", textAlign: "center", fontSize: "11px" }}>
-            {!connected ? "connecting to log stream..." : "waiting for logs…"}
-          </div>
-        ) : (
-          filtered.map((entry, i) => (
-            <div key={i} className="flex gap-2" style={{ padding: "0 2px" }}>
-              <span style={{ color: "var(--color-text-secondary)", flexShrink: 0, width: "72px" }}>
-                {entry.timestamp.split("T")[1]?.slice(0, 12) || entry.timestamp}
-              </span>
-              <span style={{ color: LEVEL_COLORS[entry.level] || "var(--color-text)", flexShrink: 0, width: "36px" }}>
-                {entry.level.slice(0, 4)}
-              </span>
-              <span style={{ color: "rgba(167, 125, 255, 0.5)", flexShrink: 0, width: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {entry.logger}
-              </span>
-              <span style={{ color: "var(--color-text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {entry.message}
-              </span>
+      <ScrollArea className="flex-1">
+        <div className="text-xs leading-6 px-5 py-2 font-mono">
+          {filtered.length === 0 ? (
+            <div className="text-muted-foreground text-center py-6 text-sm font-sans">
+              {!connected ? "connecting to log stream..." : "waiting for logs..."}
             </div>
-          ))
-        )}
-        <div ref={bottomRef} />
-      </div>
+          ) : (
+            filtered.map((entry, i) => (
+              <div key={i} className="flex gap-3 py-px">
+                <span className="text-muted-foreground shrink-0 w-[76px]">
+                  {entry.timestamp.split("T")[1]?.slice(0, 12) || entry.timestamp}
+                </span>
+                <span className={`shrink-0 w-10 font-semibold ${LEVEL_COLORS[entry.level] || "text-foreground"}`}>
+                  {entry.level.slice(0, 4)}
+                </span>
+                <span className="text-cb-purple/50 shrink-0 w-[130px] truncate">
+                  {entry.logger}
+                </span>
+                <span className="text-foreground/70 flex-1 truncate">
+                  {entry.message}
+                </span>
+              </div>
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
+      </ScrollArea>
     </div>
   );
 }

@@ -237,6 +237,72 @@ async def get_history(
         return {"messages": []}
 
 
+@app.get("/history/threads")
+async def list_threads(request: Request):
+    """List all conversation threads with their first message."""
+    agent = _get_agent(request)
+    try:
+        # Use the checkpointer to list available threads
+        checkpointer = agent.checkpointer
+        if not checkpointer:
+            return {"threads": []}
+
+        # Query the checkpoint table for distinct thread_ids with metadata
+        import psycopg
+        import psycopg.rows
+
+        async with await psycopg.AsyncConnection.connect(settings.DATABASE_URL) as conn:
+            async with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT DISTINCT ON (thread_id)
+                        thread_id,
+                        checkpoint_id,
+                        created_at
+                    FROM checkpoints
+                    ORDER BY thread_id, created_at DESC
+                    LIMIT 50
+                """
+                )
+                rows = await cur.fetchall()
+
+        threads = []
+        for row in rows:
+            tid = row["thread_id"]
+            # Try to get first user message from the thread
+            try:
+                config = {"configurable": {"thread_id": tid}}
+                state = await agent.aget_state(config)
+                msgs = state.values.get("messages", [])
+                first_user = next(
+                    (m.content for m in msgs if getattr(m, "type", None) == "human"),
+                    None,
+                )
+                msg_count = sum(1 for m in msgs if getattr(m, "type", None) == "human")
+                if first_user:
+                    threads.append(
+                        {
+                            "thread_id": tid,
+                            "first_message": first_user[:100],
+                            "message_count": msg_count,
+                            "created_at": (
+                                row["created_at"].isoformat()
+                                if row.get("created_at")
+                                else None
+                            ),
+                        }
+                    )
+            except Exception:
+                continue
+
+        # Sort by created_at descending
+        threads.sort(key=lambda t: t.get("created_at") or "", reverse=True)
+        return {"threads": threads}
+    except Exception as e:
+        logger.warning("Failed to list threads: %s", e)
+        return {"threads": []}
+
+
 # ── Session endpoints ─────────────────────────────────────────────────
 
 
@@ -286,23 +352,94 @@ async def _fetch_ollama_models() -> list[str]:
         return []
 
 
+_OPENAI_FALLBACK_MODELS = ["gpt-5-mini-2025-08-07", "gpt-4.1-mini", "gpt-4.1"]
+
+
+async def _fetch_openai_models() -> list[str]:
+    if not settings.OPENAI_API_KEY:
+        return _OPENAI_FALLBACK_MODELS
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            res = await client.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
+            )
+            res.raise_for_status()
+            data = res.json().get("data", [])
+            chat_models = sorted(
+                [
+                    m["id"]
+                    for m in data
+                    if m.get("id")
+                    and any(
+                        prefix in m["id"]
+                        for prefix in ("gpt-4", "gpt-5", "gpt-3.5", "o1", "o3", "o4")
+                    )
+                    and "realtime" not in m["id"]
+                    and "audio" not in m["id"]
+                ],
+                reverse=True,
+            )
+            return chat_models if chat_models else _OPENAI_FALLBACK_MODELS
+    except Exception:
+        return _OPENAI_FALLBACK_MODELS
+
+
+_ANTHROPIC_FALLBACK_MODELS = [
+    "claude-sonnet-4-20250514",
+    "claude-haiku-4-5-20251001",
+]
+
+
+async def _fetch_anthropic_models() -> list[str]:
+    if not settings.ANTHROPIC_API_KEY:
+        return _ANTHROPIC_FALLBACK_MODELS
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            res = await client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": settings.ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                },
+            )
+            res.raise_for_status()
+            data = res.json().get("data", [])
+            models = sorted(
+                [
+                    m["id"]
+                    for m in data
+                    if m.get("id")
+                    and ("claude" in m["id"])
+                    and m.get("type") == "model"
+                ],
+                reverse=True,
+            )
+            return models if models else _ANTHROPIC_FALLBACK_MODELS
+    except Exception:
+        return _ANTHROPIC_FALLBACK_MODELS
+
+
 @app.get("/providers")
 async def list_providers():
-    ollama_models = await _fetch_ollama_models()
+    ollama_models, openai_models, anthropic_models = await asyncio.gather(
+        _fetch_ollama_models(),
+        _fetch_openai_models(),
+        _fetch_anthropic_models(),
+    )
     return {
         "providers": [
             {
                 "id": LLMProvider.OPENAI,
                 "name": "OpenAI",
-                "models": ["gpt-5-mini-2025-08-07", "gpt-4.1-mini", "gpt-4.1"],
+                "models": openai_models,
+                "available": bool(settings.OPENAI_API_KEY),
             },
             {
                 "id": LLMProvider.ANTHROPIC,
                 "name": "Anthropic",
-                "models": [
-                    "claude-sonnet-4-20250514",
-                    "claude-haiku-4-5-20251001",
-                ],
+                "models": anthropic_models,
+                "available": bool(settings.ANTHROPIC_API_KEY),
             },
             {
                 "id": LLMProvider.OLLAMA,
@@ -652,7 +789,9 @@ async def _stream_agent(
             config=config,
             version="v2",
         )
-        async for sse_line, _content in encode_stream_async(stream):
+        async for sse_line, _content in encode_stream_async(
+            stream, model=settings.LLM_MODEL
+        ):
             yield sse_line
 
         # Check for pending HITL interrupt after stream completes

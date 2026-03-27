@@ -1,4 +1,12 @@
 import { useProvidersStore } from "../../stores/providers";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Loader2 } from "lucide-react";
 
 export function ProviderSelect() {
   const { providers, currentProvider, currentModel, switching, switchProvider } = useProvidersStore();
@@ -6,50 +14,45 @@ export function ProviderSelect() {
   const current = providers.find((p) => p.id === currentProvider);
   const models = current?.models ?? [];
 
-  const selectStyle: React.CSSProperties = {
-    fontSize: "9px",
-    color: "var(--color-text)",
-    background: "var(--color-bg-secondary)",
-    border: "0.5px solid var(--color-border)",
-    borderRadius: "2px",
-    padding: "2px 18px 2px 6px",
-    outline: "none",
-    fontFamily: "var(--font-mono)",
-  };
-
   return (
-    <div className="flex items-center gap-1.5">
-      <select
+    <div className="flex items-center gap-2">
+      <Select
         value={currentProvider}
-        onChange={(e) => {
-          const p = providers.find((x) => x.id === e.target.value);
+        onValueChange={(val) => {
+          const p = providers.find((x) => x.id === val);
           if (p) switchProvider(p.id, p.models[0] ?? "");
         }}
-        style={selectStyle}
       >
-        {providers.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="h-8 w-auto min-w-[90px] text-xs gap-1.5 rounded-xl font-medium">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {providers.map((p) => (
+            <SelectItem key={p.id} value={p.id} className="text-sm">
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <select
+      <Select
         value={currentModel}
-        onChange={(e) => switchProvider(currentProvider, e.target.value)}
-        style={selectStyle}
+        onValueChange={(val) => { if (val) switchProvider(currentProvider, val); }}
       >
-        {models.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs gap-1.5 rounded-xl font-medium">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {models.map((m) => (
+            <SelectItem key={m} value={m} className="text-sm">
+              {m}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {switching && (
-        <span className="font-mono" style={{ fontSize: "8px", color: "var(--color-yellow)" }}>
-          switching...
-        </span>
+        <Loader2 className="w-4 h-4 text-cb-yellow animate-spin" />
       )}
     </div>
   );

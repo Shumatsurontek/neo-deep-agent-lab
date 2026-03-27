@@ -3,6 +3,7 @@ import type { Message, StreamMetrics, ToolStep } from "../types";
 import { streamSSE, type SSEEvent } from "../lib/sse";
 import { apiGet, apiPost, setToken } from "../lib/api";
 import { useHitlStore } from "./hitl";
+import { useUsageStore } from "./usage";
 
 interface ChatStore {
   messages: Message[];
@@ -99,6 +100,10 @@ export const useChatStore = create<ChatStore>((set, get) => {
             };
             msgs[lastIdx] = { ...last, metrics };
           }
+          useUsageStore.getState().addMetrics(
+            event.total_tokens as number,
+            (event.estimated_cost as number) ?? 0,
+          );
           break;
         }
         case "error": {
@@ -165,6 +170,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
         if (data.token) setToken(data.token);
       } catch { /* ignore */ }
       set({ messages: [], isStreaming: false, status: "ready" });
+      useUsageStore.getState().reset();
     },
 
     loadHistory: async () => {

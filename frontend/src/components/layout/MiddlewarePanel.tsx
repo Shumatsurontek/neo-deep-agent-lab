@@ -1,38 +1,43 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMiddlewareStore } from "../../stores/middleware";
+import { Switch } from "../ui/switch";
+import { X } from "lucide-react";
 
 export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClose: () => void }): React.ReactElement | null {
   const { items, load, toggle } = useMiddlewareStore();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (visible) load();
   }, [visible, load]);
 
+  useEffect(() => {
+    if (!visible) return;
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [visible, onClose]);
+
   if (!visible) return null;
 
   return (
     <div
-      className="absolute right-0 top-full z-40 font-mono animate-fade-in"
-      style={{
-        width: "300px",
-        background: "var(--color-bg-elevated)",
-        border: "0.5px solid var(--color-border-secondary)",
-        borderRadius: "3px",
-        padding: "10px",
-        marginTop: "4px",
-        marginRight: "16px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-      }}
+      ref={panelRef}
+      className="fixed right-4 top-16 z-50 animate-fade-in w-[340px] bg-card border border-border rounded-2xl p-5 shadow-2xl"
     >
-      <div className="flex items-center justify-between" style={{ marginBottom: "8px" }}>
-        <span className="uppercase tracking-widest" style={{ fontSize: "10px", letterSpacing: "0.12em", color: "var(--color-text-bright)" }}>
-          middleware stack
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-semibold text-foreground">
+          Middleware Stack
         </span>
         <button
           onClick={onClose}
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary"
         >
-          &times;
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -40,38 +45,17 @@ export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClos
         {items.map((mw) => (
           <div
             key={mw.name}
-            className="flex items-center gap-2"
-            style={{ padding: "3px 0" }}
+            className="flex items-center gap-4 px-3 py-2.5 rounded-xl hover:bg-secondary/50 transition-colors"
           >
-            <button
-              onClick={() => toggle(mw.name, !mw.enabled)}
-              className="relative shrink-0 transition-colors"
-              style={{
-                width: "22px",
-                height: "12px",
-                borderRadius: "6px",
-                background: mw.enabled ? "rgba(124, 214, 100, 0.3)" : "var(--color-bg-secondary)",
-                border: `0.5px solid ${mw.enabled ? "rgba(124, 214, 100, 0.4)" : "var(--color-border-secondary)"}`,
-                cursor: "pointer",
-              }}
-            >
-              <div
-                className="rounded-full transition-transform"
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  background: "var(--color-text-bright)",
-                  position: "absolute",
-                  top: "1.5px",
-                  transform: mw.enabled ? "translateX(11px)" : "translateX(2px)",
-                }}
-              />
-            </button>
+            <Switch
+              checked={mw.enabled}
+              onCheckedChange={(v) => toggle(mw.name, v)}
+            />
             <div className="flex-1 min-w-0">
-              <div style={{ fontSize: "11px", color: mw.enabled ? "var(--color-text-bright)" : "var(--color-text-secondary)" }}>
+              <div className={`text-sm font-medium ${mw.enabled ? "text-foreground" : "text-muted-foreground"}`}>
                 {mw.name.replace(/_/g, " ")}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div className="text-xs text-muted-foreground truncate mt-0.5">
                 {mw.description}
               </div>
             </div>
@@ -80,7 +64,7 @@ export function MiddlewarePanel({ visible, onClose }: { visible: boolean; onClos
       </div>
 
       {items.length === 0 && (
-        <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", fontStyle: "italic", textAlign: "center", padding: "8px 0" }}>
+        <div className="text-sm text-muted-foreground text-center py-6">
           loading...
         </div>
       )}

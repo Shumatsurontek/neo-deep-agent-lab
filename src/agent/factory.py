@@ -26,6 +26,7 @@ from langgraph.store.base import BaseStore
 from pydantic import SecretStr
 
 from src.agent.prompts import SQL_AGENT_PROMPT
+from src.agent.subagents import SUBAGENTS
 from src.common import get_logger
 from src.config import settings
 from src.constants import LLMProvider
@@ -204,6 +205,7 @@ def create_sql_agent_with_middleware(
         store=store,
         checkpointer=checkpointer,
         interrupt_on=_build_interrupt_on(),
+        subagents=SUBAGENTS,
     )
 
 
@@ -265,4 +267,5 @@ def create_sql_agent(
         store=store,
         checkpointer=checkpointer,
         interrupt_on=_build_interrupt_on(),
+        subagents=SUBAGENTS,
     )

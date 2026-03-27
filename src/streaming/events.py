@@ -64,8 +64,34 @@ def interrupt_request(
     )
 
 
+COST_PER_1K_TOKENS = {
+    "gpt-5": 0.005,
+    "gpt-4.1": 0.004,
+    "gpt-4.1-mini": 0.001,
+    "gpt-3.5": 0.0015,
+    "gpt-4o": 0.005,
+    "claude-sonnet": 0.006,
+    "claude-haiku": 0.002,
+    "o1": 0.03,
+    "o3": 0.02,
+    "o4": 0.02,
+}
+
+
+def estimate_cost(model: str, token_count: int) -> float:
+    for prefix, cost in COST_PER_1K_TOKENS.items():
+        if prefix in model:
+            return (token_count / 1000) * cost
+    return 0.0
+
+
 def metrics_event(
-    ttft_ms: float, tps: float, total_tokens: int, elapsed_ms: float
+    ttft_ms: float,
+    tps: float,
+    total_tokens: int,
+    elapsed_ms: float,
+    model: str = "",
+    estimated_cost: float = 0.0,
 ) -> SSEEvent:
     """Create a metrics event with TTFT and TPS data."""
     return SSEEvent(
@@ -75,6 +101,8 @@ def metrics_event(
             "tps": round(tps, 1),
             "total_tokens": total_tokens,
             "elapsed_ms": round(elapsed_ms, 1),
+            "model": model,
+            "estimated_cost": round(estimated_cost, 6),
         },
     )
 

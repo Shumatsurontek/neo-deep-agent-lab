@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import type { RagChunk, RagDocument } from "../../types";
 import { apiGet } from "../../lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { ScrollArea } from "../ui/scroll-area";
+import { Copy, Loader2 } from "lucide-react";
 
 interface Props {
   document: RagDocument;
@@ -28,215 +38,99 @@ export function ChunkViewerModal({ document: doc, onClose }: Props) {
   }, [doc.id]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0, 0, 0, 0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="flex flex-col"
-        style={{
-          width: "min(900px, 90vw)",
-          maxHeight: "80vh",
-          background: "var(--color-bg-elevated)",
-          border: "0.5px solid var(--color-border-secondary)",
-          borderRadius: "6px",
-          boxShadow: "0 16px 48px rgba(0, 0, 0, 0.5)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between shrink-0"
-          style={{
-            padding: "12px 16px",
-            borderBottom: "0.5px solid var(--color-border)",
-          }}
-        >
-          <div>
-            <div
-              className="font-mono"
-              style={{ fontSize: "13px", color: "var(--color-text-bright)" }}
-            >
-              {doc.name}
-            </div>
-            <div
-              className="font-mono flex gap-3"
-              style={{ fontSize: "10px", color: "var(--color-text-secondary)", marginTop: "2px" }}
-            >
-              <span>{doc.chunk_count} chunks</span>
-              <span>~{doc.token_count} tokens</span>
-              <span>{doc.mime_type}</span>
-            </div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-4xl max-h-[80vh] flex flex-col p-0 gap-0 rounded-2xl">
+        <DialogHeader className="px-6 py-5 border-b border-border shrink-0">
+          <DialogTitle className="text-lg font-semibold">{doc.name}</DialogTitle>
+          <div className="flex gap-3 mt-2">
+            <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+              {doc.chunk_count} chunks
+            </Badge>
+            <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+              ~{doc.token_count} tokens
+            </Badge>
+            <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+              {doc.mime_type}
+            </Badge>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              fontSize: "18px",
-              color: "var(--color-text-secondary)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              lineHeight: 1,
-            }}
-          >
-            &times;
-          </button>
-        </div>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Chunk list */}
-          <div
-            className="shrink-0 overflow-y-auto"
-            style={{
-              width: "200px",
-              borderRight: "0.5px solid var(--color-border)",
-              padding: "8px 0",
-            }}
-          >
-            {loading ? (
-              <div
-                className="font-mono"
-                style={{
-                  fontSize: "11px",
-                  color: "var(--color-text-secondary)",
-                  padding: "12px",
-                  textAlign: "center",
-                }}
-              >
-                Loading chunks...
-              </div>
-            ) : (
-              chunks.map((chunk) => (
-                <button
-                  key={chunk.index}
-                  onClick={() => setSelected(chunk.index)}
-                  className="w-full text-left font-mono transition-colors"
-                  style={{
-                    fontSize: "11px",
-                    padding: "6px 12px",
-                    color:
-                      selected === chunk.index
-                        ? "var(--color-purple)"
-                        : "var(--color-text-secondary)",
-                    background:
-                      selected === chunk.index
-                        ? "rgba(167, 125, 255, 0.08)"
-                        : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    borderLeft:
-                      selected === chunk.index
-                        ? "2px solid var(--color-purple)"
-                        : "2px solid transparent",
-                  }}
-                >
-                  <div style={{ fontWeight: 500, color: selected === chunk.index ? "var(--color-text-bright)" : "var(--color-text)" }}>
-                    chunk {chunk.index}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "9px",
-                      color: "var(--color-text-secondary)",
-                      marginTop: "1px",
-                    }}
-                  >
-                    ~{chunk.token_estimate} tokens
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "10px",
-                      color: "var(--color-text-secondary)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      marginTop: "2px",
-                      maxWidth: "170px",
-                    }}
-                  >
-                    {chunk.text.slice(0, 60)}...
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+          <ScrollArea className="w-56 shrink-0 border-r border-border">
+            <div className="py-2">
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                chunks.map((chunk) => {
+                  const isActive = selected === chunk.index;
+                  return (
+                    <button
+                      key={chunk.index}
+                      onClick={() => setSelected(chunk.index)}
+                      className={`w-full text-left px-4 py-3 transition-all border-l-3 ${
+                        isActive
+                          ? "bg-cb-blue/5 border-l-cb-blue text-foreground"
+                          : "border-l-transparent text-muted-foreground hover:bg-secondary/30 hover:text-foreground"
+                      }`}
+                    >
+                      <div className="text-sm font-medium">chunk {chunk.index}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        ~{chunk.token_estimate} tokens
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate mt-1">
+                        {chunk.text.slice(0, 60)}...
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
 
           {/* Chunk detail */}
-          <div className="flex-1 overflow-y-auto" style={{ padding: "12px 16px" }}>
+          <div className="flex-1 overflow-hidden">
             {selected !== null ? (
               (() => {
                 const chunk = chunks.find((c) => c.index === selected);
                 if (!chunk) return null;
                 return (
-                  <div>
-                    <div className="flex items-center gap-3" style={{ marginBottom: "8px" }}>
-                      <span
-                        className="font-mono"
-                        style={{
-                          fontSize: "12px",
-                          color: "var(--color-purple)",
-                          fontWeight: 500,
-                        }}
-                      >
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
+                      <span className="text-sm font-semibold text-cb-blue">
                         Chunk {chunk.index}
                       </span>
-                      <span
-                        className="font-mono"
-                        style={{ fontSize: "10px", color: "var(--color-text-secondary)" }}
-                      >
+                      <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
                         ~{chunk.token_estimate} tokens
-                      </span>
-                      <button
-                        className="font-mono ml-auto"
-                        style={{
-                          fontSize: "10px",
-                          color: "var(--color-text-secondary)",
-                          padding: "3px 8px",
-                          border: "0.5px solid var(--color-border)",
-                          borderRadius: "2px",
-                          background: "transparent",
-                          cursor: "pointer",
-                        }}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-2 ml-auto rounded-xl"
                         onClick={() => navigator.clipboard.writeText(chunk.text)}
                       >
-                        copy
-                      </button>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </Button>
                     </div>
-                    <pre
-                      className="font-mono whitespace-pre-wrap"
-                      style={{
-                        fontSize: "12px",
-                        lineHeight: "180%",
-                        color: "var(--color-text)",
-                        background: "var(--color-bg)",
-                        border: "0.5px solid var(--color-border)",
-                        borderRadius: "3px",
-                        padding: "12px",
-                        maxHeight: "calc(80vh - 150px)",
-                        overflowY: "auto",
-                      }}
-                    >
-                      {chunk.text}
-                    </pre>
+                    <ScrollArea className="flex-1">
+                      <pre className="text-sm font-mono whitespace-pre-wrap text-foreground/70 leading-relaxed p-5">
+                        {chunk.text}
+                      </pre>
+                    </ScrollArea>
                   </div>
                 );
               })()
             ) : (
-              <div
-                className="flex items-center justify-center h-full font-mono"
-                style={{
-                  fontSize: "12px",
-                  color: "var(--color-text-secondary)",
-                  minHeight: "200px",
-                }}
-              >
+              <div className="flex items-center justify-center h-full text-sm text-muted-foreground min-h-[220px]">
                 Select a chunk to view its content
               </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

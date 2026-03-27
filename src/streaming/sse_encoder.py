@@ -97,6 +97,7 @@ def encode_stream_sync(
 
 async def encode_stream_async(
     stream: AsyncGenerator[dict[str, Any], None],
+    model: str = "",
 ) -> AsyncGenerator[tuple[str, str], None]:
     """Convert an async LangGraph v2 stream to SSE strings.
 
@@ -139,7 +140,12 @@ async def encode_stream_async(
         )
         tps = (token_count / streaming_duration) if streaming_duration > 0 else 0
 
-        yield metrics_event(ttft_ms, tps, token_count, elapsed_ms).to_sse(), ""
+        from src.streaming.events import estimate_cost
+
+        cost = estimate_cost(model, token_count)
+        yield metrics_event(
+            ttft_ms, tps, token_count, elapsed_ms, model=model, estimated_cost=cost
+        ).to_sse(), ""
         yield done_event().to_sse(), ""
 
 

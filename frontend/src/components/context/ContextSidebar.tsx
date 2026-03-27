@@ -1,6 +1,23 @@
 import { useState } from "react";
 import { useContextStore } from "../../stores/context";
 import { ScratchpadEditor } from "./ScratchpadEditor";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../ui/collapsible";
+import {
+  ChevronRight,
+  RefreshCw,
+  X,
+  Plus,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
 
 export function ContextSidebar({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { data, promptPreview, refresh, addUserContext, removeUserContext, rewardNote, loadPromptPreview } =
@@ -27,486 +44,310 @@ export function ContextSidebar({ visible, onClose }: { visible: boolean; onClose
   const recalls = data?.last_recall ?? [];
 
   return (
-    <aside
-      className="shrink-0 flex flex-col font-mono h-full"
-      style={{
-        width: "300px",
-        borderLeft: "0.5px solid var(--color-border)",
-        background: "var(--color-bg-paper)",
-      }}
-    >
+    <aside className="w-[320px] shrink-0 flex flex-col border-l border-border bg-surface h-full">
       {/* Header */}
-      <div
-        className="flex items-center justify-between shrink-0"
-        style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--color-border)" }}
-      >
-        <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--color-text-bright)" }}>
-          Context
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => refresh()}
-            style={{ fontSize: "10px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
-          >
-            refresh
-          </button>
-          <button
-            onClick={onClose}
-            style={{ fontSize: "16px", color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}
-          >
-            &times;
-          </button>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <span className="text-[15px] font-semibold text-foreground">Context</span>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => refresh()}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex shrink-0" style={{ borderBottom: "0.5px solid var(--color-border)" }}>
+      <div className="flex border-b border-border px-5 pt-1">
         {(["live", "prompt"] as const).map((t) => (
           <button
             key={t}
             onClick={() => handleTabSwitch(t)}
-            className="flex-1 uppercase tracking-widest"
-            style={{
-              padding: "8px 0",
-              textAlign: "center",
-              fontSize: "10px",
-              letterSpacing: "0.12em",
-              color: tab === t ? "var(--color-purple)" : "var(--color-text-secondary)",
-              background: "none",
-              border: "none",
-              borderBottom: tab === t ? "1.5px solid var(--color-purple)" : "1.5px solid transparent",
-              cursor: "pointer",
-            }}
+            className={`py-3 mr-6 text-sm font-medium transition-all border-b-2 capitalize ${
+              tab === t
+                ? "text-cb-blue border-cb-blue"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            }`}
           >
             {t}
           </button>
         ))}
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: "10px 12px" }}>
-        {tab === "live" && data && (
-          <div className="space-y-2">
-            {/* RAG Chunks Injected — prominent section */}
-            {ragChunks.length > 0 && (
-              <CollapsibleSection
-                title="RAG Injected"
-                badge={ragChunks.length}
-                color="var(--color-green)"
-                defaultOpen
-              >
-                <div className="space-y-1.5">
-                  {ragChunks.map((r, i) => (
-                    <RagChunkCard key={i} item={r} />
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
-
-            {/* Schema Cache */}
-            <CollapsibleSection
-              title="Schema"
-              badge={data.schema_tables.length}
-              color="var(--color-blue)"
-            >
-              {data.schema_tables.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {data.schema_tables.map((t) => (
-                    <span
-                      key={t}
-                      style={{
-                        fontSize: "10px",
-                        color: "var(--color-blue)",
-                        padding: "2px 6px",
-                        borderRadius: "2px",
-                        background: "rgba(100, 160, 255, 0.08)",
-                        border: "0.5px solid rgba(100, 160, 255, 0.2)",
-                      }}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <Empty>aucune table en cache</Empty>
-              )}
-            </CollapsibleSection>
-
-            {/* User Context */}
-            <CollapsibleSection
-              title="User Context"
-              badge={data.user_context.length}
-              color="var(--color-purple)"
-            >
-              <div className="space-y-1">
-                {data.user_context.map((c, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-1.5"
-                    style={{
-                      background: "var(--color-bg-secondary)",
-                      borderRadius: "3px",
-                      padding: "5px 8px",
-                    }}
-                  >
-                    <span style={{ fontSize: "9px", color: "var(--color-purple)", flexShrink: 0 }}>
-                      [{c.source}]
-                    </span>
-                    <span className="flex-1" style={{ fontSize: "11px", color: "var(--color-text)", lineHeight: "150%" }}>
-                      {c.text}
-                    </span>
-                    <button
-                      onClick={() => removeUserContext(i)}
-                      style={{ fontSize: "11px", color: "var(--color-red)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
-                    >
-                      &times;
-                    </button>
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-5 space-y-3">
+          {tab === "live" && data && (
+            <>
+              {/* RAG Chunks */}
+              {ragChunks.length > 0 && (
+                <Section title="RAG Injected" count={ragChunks.length} color="green" defaultOpen>
+                  <div className="space-y-2">
+                    {ragChunks.map((r, i) => (
+                      <ExpandableCard
+                        key={i}
+                        item={r}
+                        color="green"
+                        label="rag"
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="flex gap-1" style={{ marginTop: "6px" }}>
-                <input
-                  value={ctxInput}
-                  onChange={(e) => setCtxInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddCtx()}
-                  placeholder="ajouter un contexte..."
-                  style={{
-                    flex: 1,
-                    fontSize: "11px",
-                    color: "var(--color-text)",
-                    background: "var(--color-bg-secondary)",
-                    border: "0.5px solid var(--color-border)",
-                    borderRadius: "3px",
-                    padding: "5px 8px",
-                    outline: "none",
-                  }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-purple)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
-                />
-                <button
-                  onClick={handleAddCtx}
-                  style={{
-                    fontSize: "11px",
-                    color: "var(--color-purple)",
-                    background: "rgba(167, 125, 255, 0.1)",
-                    border: "0.5px solid rgba(167, 125, 255, 0.2)",
-                    borderRadius: "3px",
-                    padding: "5px 10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </CollapsibleSection>
-
-            {/* Scratchpad */}
-            <CollapsibleSection
-              title="Scratchpad"
-              badge={data.scratchpad.length}
-              color="var(--color-yellow)"
-            >
-              {data.reward_summary.total > 0 && (
-                <div className="flex gap-3" style={{ fontSize: "10px", marginBottom: "4px", color: "var(--color-text-secondary)" }}>
-                  <span>avg <b style={{ color: "var(--color-text-bright)" }}>{data.reward_summary.avg_score.toFixed(1)}</b></span>
-                  <span style={{ color: "var(--color-green)" }}>+{data.reward_summary.positive}</span>
-                  <span style={{ color: "var(--color-red)" }}>-{data.reward_summary.negative}</span>
-                </div>
+                </Section>
               )}
-              <div className="space-y-1">
-                {data.scratchpad.map((n, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-1.5"
-                    style={{ background: "var(--color-bg-secondary)", borderRadius: "3px", padding: "5px 8px" }}
-                  >
-                    <span className="flex-1" style={{ fontSize: "10px", color: "var(--color-text)", lineHeight: "150%" }}>
-                      {n.note}
-                    </span>
-                    <div className="flex gap-0.5 shrink-0 items-center">
-                      <MiniBtn onClick={() => rewardNote(i, 1)} color="var(--color-green)">+</MiniBtn>
-                      <MiniBtn onClick={() => rewardNote(i, -1)} color="var(--color-red)">&minus;</MiniBtn>
-                      <span style={{ width: "18px", fontSize: "10px", textAlign: "center", color: "var(--color-text-secondary)" }}>
-                        {n.score}
+
+              {/* Schema */}
+              <Section title="Schema" count={data.schema_tables.length} color="blue">
+                {data.schema_tables.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.schema_tables.map((t) => (
+                      <Badge key={t} variant="outline" className="text-[11px] h-6 px-2.5 text-cb-blue border-cb-blue/20 bg-cb-blue-muted rounded-lg font-medium">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">aucune table en cache</p>
+                )}
+              </Section>
+
+              {/* User Context */}
+              <Section title="User Context" count={data.user_context.length} color="purple">
+                <div className="space-y-2">
+                  {data.user_context.map((c, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 bg-secondary rounded-xl px-4 py-3"
+                    >
+                      <Badge variant="outline" className="text-[10px] h-5 shrink-0 text-cb-purple border-cb-purple/20 rounded-md font-medium">
+                        {c.source}
+                      </Badge>
+                      <span className="flex-1 text-xs text-foreground/80 leading-relaxed">
+                        {c.text}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0 rounded-lg text-cb-red hover:text-cb-red"
+                        onClick={() => removeUserContext(i)}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <ScratchpadEditor />
-            </CollapsibleSection>
-
-            {/* Memory Recall */}
-            {recalls.length > 0 && (
-              <CollapsibleSection
-                title="Memory Recall"
-                badge={recalls.length}
-                color="var(--color-orange)"
-              >
-                <div className="space-y-1.5">
-                  {recalls.map((r, i) => (
-                    <RecallCard key={i} item={r} />
                   ))}
                 </div>
-              </CollapsibleSection>
-            )}
+                <div className="flex gap-2 mt-3">
+                  <Input
+                    value={ctxInput}
+                    onChange={(e) => setCtxInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCtx()}
+                    placeholder="ajouter un contexte..."
+                    className="h-9 text-sm rounded-xl"
+                  />
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-xl" onClick={handleAddCtx}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Section>
 
-            {/* Summary */}
-            {data.summary && (
-              <CollapsibleSection title="Summary" badge="1" color="var(--color-text-secondary)">
-                <p style={{ fontSize: "10px", color: "var(--color-text)", lineHeight: "160%" }}>{data.summary}</p>
-              </CollapsibleSection>
-            )}
-          </div>
-        )}
+              {/* Scratchpad */}
+              <Section title="Scratchpad" count={data.scratchpad.length} color="yellow">
+                {data.reward_summary.total > 0 && (
+                  <div className="flex gap-4 text-xs mb-3 text-muted-foreground">
+                    <span>avg <strong className="text-foreground">{data.reward_summary.avg_score.toFixed(1)}</strong></span>
+                    <span className="text-cb-green font-medium">+{data.reward_summary.positive}</span>
+                    <span className="text-cb-red font-medium">-{data.reward_summary.negative}</span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {data.scratchpad.map((n, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 bg-secondary rounded-xl px-4 py-3"
+                    >
+                      <span className="flex-1 text-xs text-foreground/80 leading-relaxed">
+                        {n.note}
+                      </span>
+                      <div className="flex gap-1 shrink-0 items-center">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7 rounded-lg text-cb-green border-cb-green/20 hover:bg-cb-green-muted"
+                          onClick={() => rewardNote(i, 1)}
+                        >
+                          <ThumbsUp className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7 rounded-lg text-cb-red border-cb-red/20 hover:bg-cb-red-muted"
+                          onClick={() => rewardNote(i, -1)}
+                        >
+                          <ThumbsDown className="w-3 h-3" />
+                        </Button>
+                        <span className="w-6 text-center text-xs text-muted-foreground font-medium">
+                          {n.score}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <ScratchpadEditor />
+              </Section>
 
-        {tab === "prompt" && promptPreview && (
-          <div className="space-y-1.5">
-            <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginBottom: "6px" }}>
-              ~{promptPreview.token_estimate} tokens
+              {/* Memory Recall */}
+              {recalls.length > 0 && (
+                <Section title="Memory Recall" count={recalls.length} color="cyan">
+                  <div className="space-y-2">
+                    {recalls.map((r, i) => (
+                      <ExpandableCard
+                        key={i}
+                        item={r}
+                        color="cyan"
+                        label={`thread:${r.source_thread.slice(0, 8)}`}
+                      />
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {/* Summary */}
+              {data.summary && (
+                <Section title="Summary" count={1} color="muted">
+                  <p className="text-sm text-foreground/70 leading-relaxed">{data.summary}</p>
+                </Section>
+              )}
+            </>
+          )}
+
+          {tab === "prompt" && promptPreview && (
+            <div className="space-y-3">
+              <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+                ~{promptPreview.token_estimate} tokens
+              </Badge>
+              {promptPreview.sections.map((s) => (
+                <Collapsible key={s.id}>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-secondary/30 transition-colors cursor-pointer">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      {s.label}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <pre className="text-xs font-mono max-h-52 overflow-auto px-4 py-3 border-t border-border whitespace-pre-wrap break-words text-foreground/60 leading-relaxed">
+                        {s.content}
+                      </pre>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+              ))}
             </div>
-            {promptPreview.sections.map((s) => (
-              <details key={s.id} style={{ border: "0.5px solid var(--color-border)", borderRadius: "3px" }}>
-                <summary style={{ padding: "6px 10px", cursor: "pointer", fontSize: "11px", color: "var(--color-text-bright)" }}>
-                  {s.label}
-                </summary>
-                <pre style={{
-                  margin: 0,
-                  borderRadius: 0,
-                  borderTop: "0.5px solid var(--color-border)",
-                  fontSize: "10px",
-                  maxHeight: "200px",
-                  overflow: "auto",
-                  padding: "8px 10px",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}>
-                  {s.content}
-                </pre>
-              </details>
-            ))}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
     </aside>
   );
 }
 
-/* ── Sub-components ──────────────────────────────────────────────── */
+/* -- Sub-components -- */
 
-function CollapsibleSection({
+function Section({
   title,
-  badge,
+  count,
   color,
   defaultOpen = false,
   children,
 }: {
   title: string;
-  badge: number | string;
+  count: number | string;
   color: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  const colorMap: Record<string, string> = {
+    green: "text-cb-green border-cb-green/20 bg-cb-green-muted",
+    blue: "text-cb-blue border-cb-blue/20 bg-cb-blue-muted",
+    purple: "text-cb-purple border-cb-purple/20 bg-cb-purple-muted",
+    yellow: "text-cb-yellow border-cb-yellow/20 bg-cb-yellow-muted",
+    cyan: "text-cb-cyan border-cb-cyan/20 bg-cb-blue-muted",
+    muted: "text-muted-foreground border-border bg-secondary/30",
+  };
+
   return (
-    <div
-      style={{
-        border: "0.5px solid var(--color-border)",
-        borderRadius: "4px",
-        overflow: "hidden",
-      }}
-    >
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2"
-        style={{
-          padding: "7px 10px",
-          background: open ? "rgba(255,255,255,0.02)" : "transparent",
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "9px",
-            color: "var(--color-text-secondary)",
-            transform: open ? "rotate(90deg)" : "none",
-            transition: "transform 0.15s",
-          }}
-        >
-          &#x25B8;
-        </span>
-        <span
-          className="uppercase tracking-widest"
-          style={{ fontSize: "10px", letterSpacing: "0.1em", color: "var(--color-text-bright)", fontWeight: 500 }}
-        >
-          {title}
-        </span>
-        <span
-          style={{
-            fontSize: "9px",
-            color,
-            padding: "0px 5px",
-            borderRadius: "3px",
-            border: `0.5px solid ${color}`,
-            opacity: 0.8,
-            marginLeft: "auto",
-          }}
-        >
-          {badge}
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: "0 10px 10px", borderTop: "0.5px solid var(--color-border)" }}>
-          <div style={{ paddingTop: "8px" }}>{children}</div>
-        </div>
-      )}
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="rounded-2xl border border-border overflow-hidden">
+        <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors cursor-pointer">
+          <ChevronRight
+            className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          <span className="text-sm font-medium text-foreground">
+            {title}
+          </span>
+          <Badge variant="outline" className={`ml-auto text-[10px] h-5 px-2 rounded-md font-medium ${colorMap[color] || ""}`}>
+            {count}
+          </Badge>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 pt-2 border-t border-border">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
 
 function ExpandableCard({
   item,
-  accentColor,
-  accentBg,
+  color,
   label,
 }: {
   item: { text: string; score: number; source_thread: string };
-  accentColor: string;
-  accentBg: string;
+  color: string;
   label: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Parse source from text: "[source_name] actual text"
   const match = item.text.match(/^\[(.+?)\]\s*([\s\S]*)$/);
   const displayText = match?.[2] ?? item.text;
   const displayLabel = match?.[1] ?? label;
-  const isLong = displayText.length > 100;
+
+  const colorMap: Record<string, string> = {
+    green: "text-cb-green border-cb-green/20 bg-cb-green-muted",
+    cyan: "text-cb-cyan border-cb-cyan/20 bg-cb-blue-muted",
+  };
+
+  const borderColor = color === "green" ? "border-l-cb-green" : "border-l-cb-cyan";
 
   return (
-    <details
-      open={expanded}
-      onToggle={(e) => setExpanded((e.target as HTMLDetailsElement).open)}
-      style={{
-        background: "var(--color-bg-secondary)",
-        borderRadius: "3px",
-        borderLeft: `2px solid ${accentColor}`,
-      }}
+    <div
+      className={`rounded-xl bg-secondary border-l-3 overflow-hidden ${borderColor}`}
     >
-      <summary
-        style={{
-          padding: "6px 8px",
-          cursor: "pointer",
-          listStyle: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          fontSize: "10px",
-        }}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2.5 px-4 py-3 text-left"
       >
-        <span
-          style={{
-            fontSize: "9px",
-            padding: "1px 5px",
-            borderRadius: "2px",
-            background: accentBg,
-            border: `0.5px solid ${accentColor}`,
-            color: accentColor,
-            fontWeight: 500,
-            flexShrink: 0,
-          }}
-        >
+        <Badge variant="outline" className={`text-[10px] h-5 px-2 shrink-0 rounded-md font-medium ${colorMap[color] || ""}`}>
           {item.score.toFixed(2)}
-        </span>
-        <span style={{ fontSize: "9px", color: "var(--color-text-secondary)", flexShrink: 0 }}>
+        </Badge>
+        <span className="text-[11px] text-muted-foreground shrink-0 font-medium">
           {displayLabel}
         </span>
         {!expanded && (
-          <span style={{
-            color: "var(--color-text-secondary)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 0,
-          }}>
+          <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
             {displayText.slice(0, 60)}
           </span>
         )}
-        {isLong && (
-          <span style={{ fontSize: "9px", color: "var(--color-purple)", marginLeft: "auto", flexShrink: 0 }}>
-            {expanded ? "▾" : "▸"}
-          </span>
-        )}
-      </summary>
-      <div style={{
-        padding: "0 8px 8px",
-        fontSize: "10px",
-        lineHeight: "160%",
-        color: "var(--color-text)",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-      }}>
-        {displayText}
-      </div>
-    </details>
-  );
-}
-
-function RagChunkCard({ item }: { item: { text: string; score: number; source_thread: string } }) {
-  return (
-    <ExpandableCard
-      item={item}
-      accentColor="var(--color-green)"
-      accentBg="rgba(124, 214, 100, 0.1)"
-      label="rag"
-    />
-  );
-}
-
-function RecallCard({ item }: { item: { text: string; score: number; source_thread: string } }) {
-  return (
-    <ExpandableCard
-      item={item}
-      accentColor="var(--color-orange)"
-      accentBg="rgba(255, 152, 0, 0.1)"
-      label={`thread:${item.source_thread.slice(0, 8)}`}
-    />
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{ fontSize: "10px", color: "var(--color-text-secondary)", fontStyle: "italic" }}>
-      {children}
-    </p>
-  );
-}
-
-function MiniBtn({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "18px",
-        height: "18px",
-        fontSize: "11px",
-        color,
-        background: "transparent",
-        border: `0.5px solid ${color}`,
-        borderRadius: "2px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: 0.6,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
-    >
-      {children}
-    </button>
+        <ChevronRight
+          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <div className="px-4 pb-3 text-xs leading-relaxed text-foreground/70 whitespace-pre-wrap break-words">
+          {displayText}
+        </div>
+      )}
+    </div>
   );
 }
