@@ -41,6 +41,12 @@ export default defineConfig({
         headers: { Connection: "keep-alive" },
       },
       "/documents": BACKEND,
+      "/finetune/start": {
+        target: BACKEND,
+        changeOrigin: true,
+        headers: { Connection: "keep-alive" },
+      },
+      "/finetune": BACKEND,
       "/logs": {
         target: BACKEND,
         changeOrigin: true,

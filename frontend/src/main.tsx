@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ClerkProvider } from "@clerk/react";
 import App from "./App";
+import "@fontsource-variable/jetbrains-mono";
 import "./index.css";
 import "highlight.js/styles/github-dark.css";
 

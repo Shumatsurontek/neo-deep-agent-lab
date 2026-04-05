@@ -1,200 +1,184 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { ProviderSelect } from "../providers/ProviderSelect";
 import { useHitlStore } from "../../stores/hitl";
 import { useChatStore } from "../../stores/chat";
 import { useUsageStore } from "../../stores/usage";
 import { MiddlewarePanel } from "./MiddlewarePanel";
-import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Badge } from "../ui/badge";
 import {
-  MessageSquare,
-  FileText,
   Layers,
-  PanelLeft,
   ScrollText,
   Settings2,
   RotateCcw,
-  Clock,
+  Palette,
 } from "lucide-react";
+
+const TITLE_MAP: Record<string, string> = {
+  "/": "// chat",
+  "/documents": "// documents",
+  "/finetune": "// fine_tune",
+};
+
+const THEMES = [
+  { id: "default", label: "Green", color: "#00FF88" },
+  { id: "theme-pink", label: "Pink", color: "#FF69B4" },
+  { id: "theme-cyan", label: "Cyan", color: "#00D4FF" },
+  { id: "theme-light", label: "Light", color: "#0052FF" },
+];
 
 export function Header({
   ctxVisible,
   onToggleCtx,
-  sidebarVisible,
-  onToggleSidebar,
   logsVisible,
   onToggleLogs,
-  historyVisible,
-  onToggleHistory,
 }: {
   ctxVisible: boolean;
   onToggleCtx: () => void;
-  sidebarVisible?: boolean;
-  onToggleSidebar?: () => void;
   logsVisible?: boolean;
   onToggleLogs?: () => void;
-  historyVisible?: boolean;
-  onToggleHistory?: () => void;
 }) {
   const { enabled, toggle } = useHitlStore();
   const { resetChat, isStreaming, status } = useChatStore();
   const { totalTokens, totalCost, requestCount } = useUsageStore();
   const [mwOpen, setMwOpen] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
-  const onDocs = location.pathname === "/documents";
+
+  const [currentTheme, setCurrentTheme] = useState(
+    () => localStorage.getItem("neo-theme") || "default",
+  );
+  const [showPicker, setShowPicker] = useState(false);
+
+  useEffect(() => {
+    THEMES.forEach((t) => document.documentElement.classList.remove(t.id));
+    if (currentTheme !== "default") {
+      document.documentElement.classList.add(currentTheme);
+    }
+    localStorage.setItem("neo-theme", currentTheme);
+  }, [currentTheme]);
+
+  const resolvedTitle =
+    TITLE_MAP[location.pathname] || "// chat";
 
   return (
-    <header className="flex items-center h-14 px-5 border-b border-border bg-surface shrink-0">
-      {/* Left: Logo + Nav */}
-      <div className="flex items-center gap-5 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-cb-blue flex items-center justify-center text-white text-sm font-bold">
-            N
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-[15px] font-semibold text-foreground tracking-tight leading-none">
-              Neo Deep Agent
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5 tracking-wide uppercase">
-              sql sandbox
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden sm:flex items-center h-8 bg-secondary rounded-xl p-0.5">
-          {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              className={`flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium transition-all ${
-                sidebarVisible
-                  ? "bg-accent text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <PanelLeft className="w-3.5 h-3.5" />
-              Threads
-            </button>
-          )}
-          {onToggleHistory && (
-            <button
-              onClick={onToggleHistory}
-              className={`flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium transition-all ${
-                historyVisible
-                  ? "bg-accent text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              History
-            </button>
-          )}
-          <button
-            onClick={() => navigate(onDocs ? "/" : "/documents")}
-            className={`flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium transition-all ${
-              onDocs
-                ? "bg-accent text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {onDocs ? <MessageSquare className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-            {onDocs ? "Chat" : "Docs"}
-          </button>
-        </div>
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
+    <header className="flex h-14 items-center justify-between border-b border-dashed border-border-default bg-surface-dim px-6">
+      {/* Left: Page title */}
+      <h1 className="font-mono text-xs text-text-muted">{resolvedTitle}</h1>
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-4">
+        {/* Provider select */}
         <ProviderSelect />
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border-default" />
 
-        {/* HITL */}
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground font-medium tracking-wide uppercase hidden lg:inline">
+        {/* HITL toggle */}
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-[10px] text-text-dim uppercase tracking-wider hidden lg:inline">
             HITL
           </span>
-          <Switch
-            checked={enabled}
-            onCheckedChange={toggle}
-          />
+          <Switch checked={enabled} onCheckedChange={toggle} />
         </div>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border-default" />
 
-        {/* Toolbar buttons */}
-        <Button
-          variant={mwOpen ? "secondary" : "ghost"}
-          size="sm"
+        {/* Middleware */}
+        <button
           onClick={() => setMwOpen(!mwOpen)}
-          className="h-9 px-3 text-xs gap-2 rounded-xl"
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] transition-colors ${
+            mwOpen ? "text-cb-blue bg-cb-blue/10" : "text-text-dim hover:text-cb-blue"
+          }`}
         >
-          <Settings2 className="w-4 h-4" />
-          <span className="hidden xl:inline">Middleware</span>
-        </Button>
+          <Settings2 className="h-3.5 w-3.5" />
+          <span className="hidden xl:inline">MW</span>
+        </button>
         <MiddlewarePanel visible={mwOpen} onClose={() => setMwOpen(false)} />
 
-        <Button
-          variant={ctxVisible ? "secondary" : "ghost"}
-          size="sm"
+        {/* Context */}
+        <button
           onClick={onToggleCtx}
-          className="h-9 px-3 text-xs gap-2 rounded-xl"
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] transition-colors ${
+            ctxVisible ? "text-cb-blue bg-cb-blue/10" : "text-text-dim hover:text-cb-blue"
+          }`}
         >
-          <Layers className="w-4 h-4" />
-          <span className="hidden xl:inline">Context</span>
-        </Button>
+          <Layers className="h-3.5 w-3.5" />
+          <span className="hidden xl:inline">Ctx</span>
+        </button>
 
+        {/* Logs */}
         {onToggleLogs && (
-          <Button
-            variant={logsVisible ? "secondary" : "ghost"}
-            size="sm"
+          <button
             onClick={onToggleLogs}
-            className="h-9 px-3 text-xs gap-2 rounded-xl"
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] transition-colors ${
+              logsVisible ? "text-cb-blue bg-cb-blue/10" : "text-text-dim hover:text-cb-blue"
+            }`}
           >
-            <ScrollText className="w-4 h-4" />
+            <ScrollText className="h-3.5 w-3.5" />
             <span className="hidden xl:inline">Logs</span>
-          </Button>
+          </button>
         )}
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border-default" />
 
-        {/* Status + Reset */}
-        <div className="flex items-center gap-2">
+        {/* Status */}
+        <div className="flex items-center gap-2.5">
           <div
             className="w-2 h-2 rounded-full shrink-0"
             style={{
-              background: status === "streaming" ? "var(--color-cb-green)" : status === "error" ? "var(--color-cb-red)" : "var(--color-cb-green)",
+              background: status === "error" ? "#FF4444" : "#00FF88",
               opacity: status === "streaming" ? 1 : 0.4,
               animation: status === "streaming" ? "pulse-dot 1s ease-in-out infinite" : "none",
             }}
           />
-          <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+          <Badge variant="outline" className="font-mono text-[11px] h-6 px-2.5 rounded-md border-dashed">
             {isStreaming ? "streaming" : "ready"}
           </Badge>
         </div>
 
         {requestCount > 0 && (
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{totalTokens.toLocaleString()} tok</span>
-            <span>·</span>
-            <span>${totalCost.toFixed(4)}</span>
-          </div>
+          <span className="font-mono text-[11px] text-text-dim">
+            {totalTokens.toLocaleString()} tok · ${totalCost.toFixed(4)}
+          </span>
         )}
 
-        <Button
-          variant="ghost"
-          size="sm"
+        {/* Reset */}
+        <button
           onClick={resetChat}
-          className="h-9 w-9 px-0 rounded-xl text-muted-foreground hover:text-cb-red"
+          className="p-1.5 rounded-md text-text-dim hover:text-cb-red transition-colors"
           title="Reset"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-        </Button>
+        </button>
+
+        {/* Theme picker */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPicker(!showPicker)}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] text-text-dim hover:text-cb-blue transition-colors"
+          >
+            <Palette className="h-3.5 w-3.5" />
+          </button>
+          {showPicker && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+              <div className="absolute right-0 top-full z-50 mt-2 rounded-lg border border-dashed border-border-default bg-surface-base p-3 shadow-xl min-w-[120px]">
+                {THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setCurrentTheme(t.id); setShowPicker(false); }}
+                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 font-mono text-[11px] transition-colors ${
+                      currentTheme === t.id ? "bg-surface-raised text-text-primary" : "text-text-muted hover:text-text-secondary"
+                    }`}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

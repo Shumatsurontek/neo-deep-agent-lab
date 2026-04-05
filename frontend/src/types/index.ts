@@ -107,3 +107,59 @@ export interface RagChunk {
   source: string;
   token_estimate: number;
 }
+
+/* ── Fine-tuning ── */
+
+export interface FineTuneConfig {
+  model: string;
+  dataset: string;
+  gpu: string;
+  num_epochs: number;
+  learning_rate: number;
+  batch_size: number;
+  max_seq_length: number;
+  lora_r: number;
+  lora_alpha: number;
+  dataset_max_samples: number;
+  wandb_api_key: string;
+}
+
+export interface TrainedModel {
+  name: string;
+  path: string;
+  size_mb: number;
+}
+
+export interface FineTuneJob {
+  id: string;
+  config: FineTuneConfig;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  created_at: number;
+  started_at: number | null;
+  completed_at: number | null;
+  error: string | null;
+  model_path: string | null;
+  current_step: number;
+  total_steps: number;
+  current_loss: number | null;
+}
+
+export interface FineTuneEvent {
+  type:
+    | "finetune-start"
+    | "finetune-progress"
+    | "finetune-validation"
+    | "finetune-saving"
+    | "finetune-done"
+    | "finetune-error";
+  step?: number;
+  total_steps?: number;
+  loss?: number;
+  learning_rate?: number;
+  val_loss?: number;
+  epoch?: number;
+  message?: string;
+  model_path?: string;
+  final_loss?: number;
+  job?: FineTuneJob;
+}

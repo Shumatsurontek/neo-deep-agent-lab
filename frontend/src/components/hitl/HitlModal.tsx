@@ -9,8 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
 import { ShieldAlert, Check, Pencil, XCircle } from "lucide-react";
 
 export function HitlModal() {
@@ -35,48 +33,46 @@ export function HitlModal() {
 
   return (
     <Dialog open={true} onOpenChange={() => { clearPending(); setEditing(false); }}>
-      <DialogContent className="sm:max-w-lg rounded-2xl">
+      <DialogContent className="sm:max-w-lg rounded border border-dashed border-border-default bg-surface-base">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-lg font-semibold">
-            <div className="w-9 h-9 rounded-xl bg-cb-yellow-muted flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5 text-cb-yellow" />
+          <DialogTitle className="flex items-center gap-3 font-mono text-sm">
+            <div className="w-8 h-8 rounded flex items-center justify-center bg-cb-yellow/10 border border-dashed border-cb-yellow/30">
+              <ShieldAlert className="w-4 h-4 text-cb-yellow" />
             </div>
-            Approbation requise
+            // approbation_requise
           </DialogTitle>
           {pendingDescription && (
-            <DialogDescription className="text-sm leading-relaxed mt-2">
+            <DialogDescription className="font-mono text-xs text-text-muted leading-relaxed mt-2">
               {pendingDescription}
             </DialogDescription>
           )}
         </DialogHeader>
 
-        <div className="py-3">
+        <div className="py-4">
           {!editing ? (
-            <pre className="text-sm text-cb-blue font-mono bg-secondary rounded-2xl border border-border px-5 py-4 max-h-52 overflow-auto leading-relaxed whitespace-pre-wrap break-all">
+            <pre className="font-mono text-sm text-cb-blue bg-surface-dim rounded-lg border border-dashed border-border-default px-6 py-5 max-h-52 overflow-auto leading-relaxed whitespace-pre-wrap break-all">
               {pendingQuery}
             </pre>
           ) : (
-            <Textarea
+            <textarea
               value={editedQuery}
               onChange={(e) => setEditedQuery(e.target.value)}
-              className="min-h-[140px] text-sm font-mono rounded-2xl"
+              className="w-full min-h-[140px] font-mono text-sm bg-surface-dim border border-dashed border-border-default rounded px-5 py-4 text-text-primary focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none"
               autoFocus
             />
           )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl text-cb-red border-cb-red/30 hover:bg-cb-red-muted gap-2 font-medium"
+          <button
+            className="flex items-center gap-2 font-mono text-xs text-cb-red px-5 py-2.5 rounded-md border border-dashed border-cb-red/30 hover:bg-cb-red/10 transition-colors"
             onClick={() => decide("reject")}
           >
-            <XCircle className="w-4 h-4" />
-            Rejeter
-          </Button>
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl text-cb-yellow border-cb-yellow/30 hover:bg-cb-yellow-muted gap-2 font-medium"
+            <XCircle className="w-3.5 h-3.5" />
+            reject()
+          </button>
+          <button
+            className="flex items-center gap-2 font-mono text-xs text-cb-yellow px-5 py-2.5 rounded-md border border-dashed border-cb-yellow/30 hover:bg-cb-yellow/10 transition-colors"
             onClick={() => {
               if (!editing) {
                 setEditedQuery(pendingQuery);
@@ -86,16 +82,16 @@ export function HitlModal() {
               }
             }}
           >
-            <Pencil className="w-4 h-4" />
-            {editing ? "Valider" : "Modifier"}
-          </Button>
-          <Button
-            className="h-10 rounded-xl bg-cb-green text-white hover:bg-cb-green/90 gap-2 font-medium"
+            <Pencil className="w-3.5 h-3.5" />
+            {editing ? "validate()" : "edit()"}
+          </button>
+          <button
+            className="flex items-center gap-2 font-mono text-xs text-[#0A0A0A] bg-cb-green px-5 py-2.5 rounded-md hover:bg-cb-green/90 transition-colors font-medium"
             onClick={() => decide("approve")}
           >
-            <Check className="w-4 h-4" />
-            Approuver
-          </Button>
+            <Check className="w-3.5 h-3.5" />
+            approve()
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

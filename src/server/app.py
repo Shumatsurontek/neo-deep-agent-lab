@@ -29,6 +29,7 @@ from src.context.pg_sync import (
     search_context,
 )
 from src.context.thread_var import current_thread_id
+from src.finetune.router import router as finetune_router
 from src.persistence.pg import close_persistence, init_persistence
 from src.rag.router import router as rag_router
 from src.server.log_stream import install_log_handler, log_event_generator
@@ -139,6 +140,7 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(rag_router)
+app.include_router(finetune_router)
 
 
 def _get_agent(request: Request) -> Any:

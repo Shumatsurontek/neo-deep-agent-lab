@@ -7,15 +7,16 @@ import { useHitlStore } from "./stores/hitl";
 import { useChatStore } from "./stores/chat";
 import { useAgentsStore, type AgentState } from "./stores/agents";
 import { initSession, setToken } from "./lib/api";
+import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { ChatPanel } from "./components/chat/ChatPanel";
 import { ContextSidebar } from "./components/context/ContextSidebar";
 import { HitlModal } from "./components/hitl/HitlModal";
 import { DocumentPanel } from "./components/documents/DocumentPanel";
-import { AgentSidebar } from "./components/agents/AgentSidebar";
+import { FineTunePanel } from "./components/finetune/FineTunePanel";
 import { AgentTabs } from "./components/agents/AgentTabs";
 import { LogPanel } from "./components/layout/LogPanel";
-import { HistoryPanel } from "./components/history/HistoryPanel";
+import { Menu } from "lucide-react";
 
 export default function App() {
   const { ready, init } = useSessionStore();
@@ -27,9 +28,8 @@ export default function App() {
 
   const { agents, activeAgentId, addAgent, switchAgent, updateAgent } = useAgentsStore();
   const [ctxVisible, setCtxVisible] = useState(false);
-  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [logsVisible, setLogsVisible] = useState(false);
-  const [historyVisible, setHistoryVisible] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const prevAgentIdRef = useRef<string | null>(null);
 
@@ -134,45 +134,72 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-cb-blue/10 border border-cb-blue/20 flex items-center justify-center text-xl font-bold text-cb-blue mx-auto mb-5 animate-pulse">
-            N
+      <div className="h-screen flex items-center justify-center bg-[#0A0A0A]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded border border-dashed border-cb-blue/30 bg-cb-blue/5 animate-pulse">
+            <span className="font-mono text-xl text-cb-blue">&gt;_</span>
           </div>
-          <div className="text-muted-foreground text-sm tracking-tight">Initializing session...</div>
+          <span className="font-mono text-sm font-bold text-cb-blue">NEO_DEEP</span>
+          <span className="font-mono text-xs text-[#444]">// initializing session...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <Header
-        ctxVisible={ctxVisible}
-        onToggleCtx={() => setCtxVisible(!ctxVisible)}
-        sidebarVisible={sidebarVisible}
-        onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
-        logsVisible={logsVisible}
-        onToggleLogs={() => setLogsVisible(!logsVisible)}
-        historyVisible={historyVisible}
-        onToggleHistory={() => setHistoryVisible(!historyVisible)}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <AgentSidebar
-          visible={sidebarVisible}
-          onClose={() => setSidebarVisible(false)}
-          onNewAgent={handleNewAgent}
+    <div className="flex h-screen bg-[#0A0A0A]">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
-        <HistoryPanel visible={historyVisible} onClose={() => setHistoryVisible(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <AgentTabs onNewAgent={handleNewAgent} />
-          <Routes>
-            <Route path="/documents" element={<DocumentPanel />} />
-            <Route path="*" element={<ChatPanel />} />
-          </Routes>
-        </div>
-        <ContextSidebar visible={ctxVisible} onClose={() => setCtxVisible(false)} />
+      )}
+
+      {/* Sidebar — hidden on mobile unless open */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 md:relative md:translate-x-0
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        <Sidebar onNewAgent={handleNewAgent} />
       </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Mobile hamburger */}
+        <div className="flex items-center md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-4 text-[#666]"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Desktop header */}
+        <div className="hidden md:block">
+          <Header
+            ctxVisible={ctxVisible}
+            onToggleCtx={() => setCtxVisible(!ctxVisible)}
+            logsVisible={logsVisible}
+            onToggleLogs={() => setLogsVisible(!logsVisible)}
+          />
+        </div>
+
+        {/* Content area */}
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <AgentTabs onNewAgent={handleNewAgent} />
+            <Routes>
+              <Route path="/documents" element={<DocumentPanel />} />
+              <Route path="/finetune" element={<FineTunePanel />} />
+              <Route path="*" element={<ChatPanel />} />
+            </Routes>
+          </div>
+          <ContextSidebar visible={ctxVisible} onClose={() => setCtxVisible(false)} />
+        </div>
+      </div>
+
       <LogPanel visible={logsVisible} onClose={() => setLogsVisible(false)} />
       <HitlModal />
     </div>

@@ -5,9 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
+  --font-heading: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-sans: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -50,61 +50,133 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.85rem;
 }
 
-/* ── Coinbase-inspired dark palette ── */
+/* ── Green Neon Cyberpunk — default dark palette ── */
 .dark {
-  --background: #050505;
-  --foreground: #f0f0f0;
-  --card: #0a0b0d;
-  --card-foreground: #f0f0f0;
-  --popover: #0f1012;
-  --popover-foreground: #f0f0f0;
-  --primary: #0052ff;
-  --primary-foreground: #ffffff;
-  --secondary: #141519;
-  --secondary-foreground: #f0f0f0;
-  --muted: #1a1b20;
-  --muted-foreground: #8a919e;
-  --accent: #1c1d24;
-  --accent-foreground: #f0f0f0;
-  --destructive: #ff5252;
-  --border: #1e2028;
-  --input: #1e2028;
-  --ring: #0052ff;
-  --chart-1: #0052ff;
-  --chart-2: #00d395;
-  --chart-3: #5b7fff;
-  --chart-4: #ffb800;
-  --chart-5: #ff5252;
-  --sidebar: #0a0b0d;
-  --sidebar-foreground: #8a919e;
-  --sidebar-primary: #f0f0f0;
-  --sidebar-primary-foreground: #050505;
-  --sidebar-accent: #141519;
-  --sidebar-accent-foreground: #f0f0f0;
-  --sidebar-border: #1e2028;
-  --sidebar-ring: #0052ff;
+  --background: #0A0A0A;
+  --foreground: #E0E0E0;
+  --card: #111111;
+  --card-foreground: #E0E0E0;
+  --popover: #111111;
+  --popover-foreground: #E0E0E0;
+  --primary: #00FF88;
+  --primary-foreground: #0A0A0A;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #E0E0E0;
+  --muted: #1A1A1A;
+  --muted-foreground: #666666;
+  --accent: #1A1A1A;
+  --accent-foreground: #E0E0E0;
+  --destructive: #FF4444;
+  --border: #1E1E1E;
+  --input: #1E1E1E;
+  --ring: #00FF88;
+  --chart-1: #00FF88;
+  --chart-2: #00D4FF;
+  --chart-3: #FF69B4;
+  --chart-4: #FFB800;
+  --chart-5: #FF4444;
+  --sidebar: #0A0A0A;
+  --sidebar-foreground: #666666;
+  --sidebar-primary: #E0E0E0;
+  --sidebar-primary-foreground: #0A0A0A;
+  --sidebar-accent: #1A1A1A;
+  --sidebar-accent-foreground: #E0E0E0;
+  --sidebar-border: #1E1E1E;
+  --sidebar-ring: #00FF88;
 }
 
 /* ── Semantic aliases ── */
 @theme {
-  --color-surface: #0a0b0d;
-  --color-surface-elevated: #0f1012;
-  --color-cb-blue: #0052ff;
-  --color-cb-blue-hover: #0040cc;
-  --color-cb-blue-muted: #0052ff26;
-  --color-cb-green: #00d395;
-  --color-cb-green-muted: #00d39526;
-  --color-cb-yellow: #ffb800;
-  --color-cb-yellow-muted: #ffb80026;
-  --color-cb-red: #ff5252;
-  --color-cb-red-muted: #ff525226;
+  --color-surface: #111111;
+  --color-surface-elevated: #1A1A1A;
+  --color-cb-blue: #00FF88;
+  --color-cb-blue-hover: #00CC6A;
+  --color-cb-blue-muted: #00FF8826;
+  --color-cb-green: #00FF88;
+  --color-cb-green-muted: #00FF8826;
+  --color-cb-yellow: #FFB800;
+  --color-cb-yellow-muted: #FFB80026;
+  --color-cb-red: #FF4444;
+  --color-cb-red-muted: #FF444426;
   --color-cb-purple: #8a63d2;
   --color-cb-purple-muted: #8a63d226;
-  --color-cb-cyan: #5b7fff;
-  --color-text-dim: #5b616e;
+  --color-cb-cyan: #00D4FF;
+  --color-cb-pink: #FF69B4;
+  --color-text-dim: #444444;
+  --color-text-ghost: #333333;
+  --color-text-muted: #666666;
+  --color-text-secondary: #AAAAAA;
+  --color-text-primary: #E0E0E0;
+  --color-surface-dim: #0A0A0A;
+  --color-surface-base: #111111;
+  --color-surface-raised: #1A1A1A;
+  --color-border-default: #1E1E1E;
+  --color-border-subtle: #2A2A2A;
+}
+
+/* ── Theme variants ── */
+html.theme-pink {
+  --primary: #FF69B4;
+  --ring: #FF69B4;
+  --sidebar-ring: #FF69B4;
+}
+html.theme-pink .dark {
+  --primary: #FF69B4;
+  --ring: #FF69B4;
+}
+html.theme-pink {
+  --color-cb-blue: #FF69B4;
+  --color-cb-blue-hover: #FF45A0;
+  --color-cb-blue-muted: #FF69B426;
+  --color-cb-green: #00FF88;
+}
+
+html.theme-cyan {
+  --primary: #00D4FF;
+  --ring: #00D4FF;
+  --sidebar-ring: #00D4FF;
+}
+html.theme-cyan .dark {
+  --primary: #00D4FF;
+  --ring: #00D4FF;
+}
+html.theme-cyan {
+  --color-cb-blue: #00D4FF;
+  --color-cb-blue-hover: #00B0D4;
+  --color-cb-blue-muted: #00D4FF26;
+  --color-cb-green: #00FF88;
+}
+
+html.theme-light {
+  --color-cb-blue: #0052FF;
+  --color-cb-blue-hover: #0040D6;
+  --color-cb-blue-muted: #0052FF26;
+  --color-cb-green: #00d395;
+}
+html.theme-light .dark {
+  --background: #F8F9FA;
+  --foreground: #212529;
+  --card: #FFFFFF;
+  --card-foreground: #212529;
+  --popover: #FFFFFF;
+  --popover-foreground: #212529;
+  --primary: #0052FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E9ECEF;
+  --secondary-foreground: #212529;
+  --muted: #E9ECEF;
+  --muted-foreground: #6C757D;
+  --accent: #E9ECEF;
+  --accent-foreground: #212529;
+  --border: #DEE2E6;
+  --input: #DEE2E6;
+  --ring: #0052FF;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #6C757D;
+  --sidebar-border: #DEE2E6;
 }
 
 @layer base {
@@ -124,21 +196,25 @@
 
 html {
   font-size: 16px;
+  color-scheme: dark;
+}
+
+html.theme-light {
+  color-scheme: light;
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-mono);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.011em;
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1e2028; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2a2d36; }
+::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
 
 /* ── Code ── */
 pre, code {
@@ -146,7 +222,7 @@ pre, code {
 }
 pre {
   background: var(--background);
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   overflow-x: auto;
@@ -158,7 +234,7 @@ code {
 }
 
 /* ── Markdown prose ── */
-.prose { font-weight: 400; letter-spacing: -0.011em; }
+.prose { font-weight: 400; }
 .prose h1, .prose h2, .prose h3 {
   color: var(--foreground);
   margin: 16px 0 8px;
@@ -172,15 +248,15 @@ code {
 .prose ul, .prose ol { margin: 8px 0; padding-left: 24px; }
 .prose li { margin: 4px 0; }
 .prose table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
-.prose th, .prose td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+.prose th, .prose td { border: 1px dashed var(--border); padding: 8px 14px; text-align: left; }
 .prose th { background: var(--secondary); color: var(--foreground); font-weight: 600; }
-.prose a { color: var(--primary); text-decoration: none; }
+.prose a { color: var(--color-cb-blue); text-decoration: none; }
 .prose a:hover { text-decoration: underline; }
-.prose blockquote { border-left: 3px solid var(--primary); padding-left: 16px; color: var(--muted-foreground); }
+.prose blockquote { border-left: 3px solid var(--color-cb-blue); padding-left: 16px; color: var(--muted-foreground); }
 .prose strong { color: var(--foreground); font-weight: 600; }
 .prose code {
   background: var(--secondary);
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
   font-size: 13px;
@@ -198,7 +274,7 @@ code {
 }
 .yoopta-dark [data-yoopta-editor] code {
   background: var(--secondary);
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
   font-size: 13px;
@@ -212,7 +288,7 @@ code {
   color: var(--foreground);
 }
 .yoopta-dark [data-yoopta-editor] blockquote {
-  border-left: 3px solid var(--primary);
+  border-left: 3px solid var(--color-cb-blue);
   padding-left: 16px;
   color: var(--muted-foreground);
 }
@@ -221,8 +297,18 @@ code {
 }
 .yoopta-dark [data-yoopta-editor] th,
 .yoopta-dark [data-yoopta-editor] td {
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border);
   padding: 6px 12px;
+}
+
+/* ── Form elements override for cyberpunk feel ── */
+select, input, textarea {
+  font-family: var(--font-mono) !important;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--color-cb-blue) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px var(--color-cb-blue) !important;
 }
 
 /* ── Animations ── */

@@ -5,7 +5,7 @@
 Conversational SQL Agent with Sandboxed Execution, Context Engineering & Human-in-the-Loop
 
 **Arthur Edmond** · LLM Engineer @ [Swapn](https://swapn.com)
-*A production-grade SQL agent powered by LangChain Deep Agents, executing queries in an isolated Modal sandbox with a 7-layer middleware stack, hybrid BM25+vector recall (ParadeDB), and a React/Next.js frontend*
+*A production-grade SQL agent powered by LangChain Deep Agents, executing queries in an isolated Modal sandbox with a 7-layer middleware stack, hybrid BM25+vector recall (ParadeDB), a React 19 cyberpunk frontend, and a full fine-tuning pipeline (Unsloth + vLLM on Modal GPUs)*
 
 
 
@@ -13,7 +13,7 @@ Conversational SQL Agent with Sandboxed Execution, Context Engineering & Human-i
 
 ## ⚡ TL;DR
 
-> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, schema cache, context injection, model fallback...) assurent securite et resilience. **Context engineering complet** : schema cache, scratchpad avec reward +1/-1, **short memory recall** (BM25+vector hybrid search via ParadeDB/RRF), contexte persistant (user + agent), dynamic prompt preview, et **Human-in-the-Loop** (approbation SQL avant execution). **Frontend React/Next.js + Tailwind** avec streaming SSE, tool panels, charts inline, et **switch de provider a chaud** (OpenAI, Anthropic, Ollama local). Persistence PostgreSQL (AsyncPostgresStore + AsyncPostgresSaver).
+> Posez des questions en langage naturel sur votre base de donnees — l'agent genere le SQL, l'execute dans un **sandbox PostgreSQL isole** (Modal), et repond en francais. **7 middleware** (SQL guard, schema cache, context injection, model fallback...) assurent securite et resilience. **Context engineering complet** : schema cache, scratchpad avec reward +1/-1, **short memory recall** (BM25+vector hybrid search via ParadeDB/RRF), contexte persistant (user + agent), dynamic prompt preview, et **Human-in-the-Loop** (approbation SQL avant execution). **Frontend React 19 cyberpunk** (JetBrains Mono, green neon, 4 themes) avec streaming SSE, tool panels, charts inline, et **switch de provider a chaud** (OpenAI, Anthropic, Ollama local). **Fine-tuning pipeline** : Unsloth (Qwen3.5) + Transformers (LFM2.5) sur GPU Modal (L40S/A100), W&B tracking, inférence vLLM. Persistence PostgreSQL (AsyncPostgresStore + AsyncPostgresSaver).
 
 ---
 
@@ -68,6 +68,20 @@ graph LR
     A -.-> ctx
     A -.-> LS[LangSmith]
     A -.-> CP[AsyncPostgresSaver]
+
+    subgraph ft [" Fine-Tuning Pipeline "]
+        FTC[FineTunePanel<br/>config + monitor]
+        FTR[FastAPI Router<br/>SSE streaming]
+        MTQ["train_qwen()<br/>Unsloth + LoRA"]
+        MTG["train_generic()<br/>Transformers + PEFT"]
+        VL["serve_model()<br/>vLLM inference"]
+        VOL[(finetune-cache<br/>Modal Volume)]
+    end
+
+    FTC --> FTR
+    FTR --> MTQ & MTG
+    MTQ & MTG --> VOL
+    VOL --> VL
 
     subgraph search [" Hybrid Search "]
         VS["pgvector (cosine)"]
@@ -168,6 +182,147 @@ Switch de provider et modele **a chaud** depuis l'interface. Les modeles Ollama 
 
 Traces completes de chaque appel agent, tool, et middleware. Optionnel, activable via `.env`.
 
+### 🎨 Frontend Cyberpunk (React 19 + Tailwind 4)
+
+Interface terminal green neon avec JetBrains Mono, dashed borders, et 4 themes switchables (Green, Pink, Cyan, Light). Layout avec sidebar permanente (240px) + header minimal + panneaux contextuels. Mobile responsive avec sidebar overlay.
+
+### 🧬 Fine-Tuning Pipeline (Modal + Unsloth + vLLM)
+
+Pipeline complet de fine-tuning SQL avec entrainement sur GPU distant et inference via vLLM.
+
+
+---
+
+## 🧬 Fine-Tuning Pipeline
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     FineTunePanel (React)                         │
+│  ┌────────────┐  ┌─────────────────┐  ┌───────────────────────┐ │
+│  │ Config Form│  │Training Monitor │  │  Inference Panel      │ │
+│  │ model/gpu  │  │ loss chart      │  │  model select + chat  │ │
+│  │ wandb key  │  │ SSE streaming   │  │  vLLM OpenAI compat   │ │
+│  └─────┬──────┘  └───────┬─────────┘  └──────────┬────────────┘ │
+│        │                 │                        │              │
+│  POST /finetune/start    │ SSE events    POST /finetune/infer    │
+└────────┼─────────────────┼────────────────────────┼──────────────┘
+         ▼                 ▲                        ▼
+   ┌─────────────── FastAPI Router ──────────────────────┐
+   │  _get_train_function(model)                         │
+   │  ├── Qwen/*  → train_qwen (Unsloth image)          │
+   │  └── other   → train_generic (Transformers image)   │
+   │  poll modal.Dict for progress → SSE to frontend     │
+   └─────────────────────┬──────────────────────────────┘
+                         ▼
+   ┌──────────── Modal Remote GPU ──────────────────────┐
+   │                                                     │
+   │  Image A: Unsloth (Qwen3.5)     Image B: Generic   │
+   │  ┌─────────────────────────┐  ┌──────────────────┐ │
+   │  │ unsloth[cu128]==2025.7  │  │ transformers>=5  │ │
+   │  │ transformers==4.54.0    │  │ peft + bitsandb  │ │
+   │  │ trl==0.19.1             │  │ trl>=0.12        │ │
+   │  │                         │  │                  │ │
+   │  │ FastLanguageModel       │  │ AutoModelForCLM  │ │
+   │  │ + LoRA bf16             │  │ + PEFT LoRA      │ │
+   │  └─────────────────────────┘  └──────────────────┘ │
+   │                                                     │
+   │  Image C: vLLM                                      │
+   │  ┌─────────────────────────────────────────────┐   │
+   │  │ vllm==0.12.0                                │   │
+   │  │ serve_model() → OpenAI-compat /v1/chat/...  │   │
+   │  │ L40S GPU, scaledown 15min                   │   │
+   │  └─────────────────────────────────────────────┘   │
+   │                                                     │
+   │  ┌─────────────────────────────────┐               │
+   │  │    finetune-cache (Volume)      │               │
+   │  │    /cache/models/               │               │
+   │  │    /cache/output/               │               │
+   │  └─────────────────────────────────┘               │
+   └─────────────────────────────────────────────────────┘
+```
+
+### Modeles Supportes
+
+| Modele                   | Params | VRAM (LoRA bf16) | Engine             | GPU Recommande |
+| ------------------------ | ------ | ---------------- | ------------------ | -------------- |
+| `Qwen/Qwen3.5-0.8B`    | 0.8B   | 3 GB             | Unsloth            | T4             |
+| `Qwen/Qwen3.5-2B`      | 2B     | 5 GB             | Unsloth            | T4 / L40S      |
+| `Qwen/Qwen3.5-4B`      | 4B     | 10 GB            | Unsloth            | L40S           |
+| `Qwen/Qwen3.5-9B`      | 9B     | 22 GB            | Unsloth            | L40S / A100    |
+| `LiquidAI/LFM2.5-350M` | 350M   | <1 GB            | Transformers + PEFT | T4             |
+
+### Dataset
+
+**`gretelai/synthetic_text_to_sql`** — 105,851 enregistrements (100K train / 5,851 test), 12 colonnes, 100 domaines, 23M tokens. Formate en SFT chat :
+
+```
+System: You are a SQL expert. Given a database schema and a natural language question, generate the correct SQL query.
+User: Schema: {sql_context}\n\nQuestion: {sql_prompt}
+Assistant: {sql}
+```
+
+### Hyperparametres par Defaut
+
+| Parametre | Valeur | Description |
+|-----------|--------|-------------|
+| `num_epochs` | 3 | Nombre d'epoques d'entrainement |
+| `learning_rate` | 2×10⁻⁴ | Taux d'apprentissage (cosine scheduler) |
+| `batch_size` | 4 | Taille de batch par GPU |
+| `max_seq_length` | 2048 | Longueur maximale de sequence |
+| `lora_r` | 16 | Rang LoRA (dimension du low-rank) |
+| `lora_alpha` | 32 | Alpha LoRA (scaling factor = α/r) |
+| `dataset_max_samples` | 10,000 | Sous-echantillon du dataset |
+| `warmup_ratio` | 0.05 | Fraction du warmup lineaire |
+| `lr_scheduler` | cosine | Decroissance cosinus du learning rate |
+
+### W&B Integration
+
+Tracking optionnel via Weights & Biases. Configurable depuis le frontend (champ API key dans le panneau) ou via `.env` :
+
+```env
+WANDB_API_KEY=wandb_v1_...
+```
+
+Quand active, chaque job de fine-tuning cree un run W&B avec les metriques : loss, learning_rate, epoch, validation_loss.
+
+### Inference vLLM
+
+Apres l'entrainement, le modele est sauvegarde dans le volume Modal `finetune-cache`. Le serveur vLLM :
+
+1. Charge le dernier checkpoint depuis `/cache/models/`
+2. Expose un endpoint **OpenAI-compatible** (`/v1/chat/completions`)
+3. Tourne sur L40S avec auto-scaledown apres 15 min d'inactivite
+4. Supporte 32 requetes concurrentes
+
+```bash
+# Deployer l'app Modal (images + fonctions)
+modal deploy src/finetune/modal_app.py
+
+# Query le modele deploye
+curl -X POST <vllm_url>/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a SQL expert..."},
+      {"role": "user", "content": "Schema: CREATE TABLE users (id INT, name TEXT);\n\nQuestion: How many users?"}
+    ],
+    "temperature": 0.1
+  }'
+```
+
+### Endpoints Fine-Tuning
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/finetune/start` | Lancer un job (SSE streaming des progress events) |
+| `POST` | `/finetune/cancel/{job_id}` | Annuler un job en cours |
+| `GET` | `/finetune/jobs` | Lister les jobs de la session |
+| `GET` | `/finetune/models` | Lister les modeles entraines dans le volume |
+| `POST` | `/finetune/serve` | Deployer le serveur vLLM |
+| `POST` | `/finetune/infer` | Proxy de requete chat vers vLLM |
+
 
 ---
 
@@ -235,8 +390,11 @@ Traces completes de chaque appel agent, tool, et middleware. Optionnel, activabl
 | Base de donnees | ParadeDB (PostgreSQL 17 + pgvector + pg_search/BM25)            |
 | Persistence     | AsyncPostgresStore (vectors) + AsyncPostgresSaver (checkpoints) |
 | Search          | Hybrid BM25+vector via Reciprocal Rank Fusion (RRF)             |
+| Fine-Tuning     | Unsloth (Qwen3.5) + Transformers/PEFT (LFM2.5) sur Modal GPUs  |
+| Inference       | vLLM 0.12 (OpenAI-compatible endpoint sur Modal L40S)           |
+| Tracking        | W&B (Weights & Biases) pour metriques d'entrainement            |
 | API Server      | FastAPI + SSE streaming                                         |
-| Frontend        | Next.js 16 + React 19 + Tailwind CSS 4                          |
+| Frontend        | React 19 + Vite 6 + Tailwind CSS 4 (cyberpunk terminal theme)  |
 | CLI             | Rich (panels, markdown, spinners)                               |
 | Validation      | Pydantic v2 (strict mode)                                       |
 | Tracing         | LangSmith                                                       |
@@ -297,6 +455,9 @@ HITL_ENABLED=true                # human-in-the-loop (toggle via UI)
 # ── Modal ──
 MODAL_TOKEN_ID=...
 MODAL_TOKEN_SECRET=...
+
+# ── W&B (optionnel, pour fine-tuning tracking) ──
+WANDB_API_KEY=wandb_v1_...
 
 # ── LangSmith (optionnel) ──
 LANGCHAIN_TRACING_V2=true
@@ -393,8 +554,14 @@ src/
 │       ├── chart.py           # Standalone Seaborn chart renderer (runs in sandbox)
 │       └── analysis.py        # Standalone pandas analysis (runs in sandbox)
 │
+├── 🧬 finetune/
+│   ├── config.py              # Pydantic models (ModelChoice, GPUChoice, FineTuneConfig, FineTuneJob)
+│   ├── modal_app.py           # Modal functions (train_qwen, train_generic, serve_model, list_models)
+│   └── router.py              # FastAPI router (/finetune/start SSE, /serve, /infer, /models, /jobs)
+│
 ├── 🌐 server/
-│   ├── app.py                 # FastAPI (SSE, /context, /hitl, /resume, /search)
+│   ├── app.py                 # FastAPI (SSE, /context, /hitl, /resume, /search, /finetune)
+│   ├── auth.py                # Clerk JWT verification (optional)
 │   └── static/                # Legacy vanilla JS frontend
 │
 ├── 📡 streaming/
@@ -412,29 +579,46 @@ src/
     ├── scratchpad_tool.py     # @tool — agent session notes with reward awareness
     └── context_tool.py        # @tool — agent persists verified facts to durable context
 
-frontend/                       # Next.js 16 + React 19 + Tailwind CSS 4
-├── next.config.ts              # Proxy /api/* → FastAPI :8000
+frontend/                       # React 19 + Vite 6 + Tailwind CSS 4 (cyberpunk terminal theme)
+├── vite.config.ts              # Dev server proxy → FastAPI :8080
 ├── src/
-│   ├── app/
-│   │   ├── layout.tsx          # Root layout (Inter font, Tailwind globals)
-│   │   ├── page.tsx            # Main page (chat + sidebar + HITL)
-│   │   └── globals.css         # Tailwind directives + prose overrides
+│   ├── App.tsx                 # Root layout (sidebar + header + routes)
+│   ├── main.tsx                # Entry point (JetBrains Mono, Clerk, BrowserRouter)
+│   ├── index.css               # Cyberpunk theme (4 themes, CSS variables, dashed borders)
 │   ├── components/
-│   │   ├── ChatPanel.tsx       # Chat zone (messages + input)
-│   │   ├── MessageBubble.tsx   # User/assistant message with ReactMarkdown
-│   │   ├── ToolStep.tsx        # Collapsible tool call accordion
-│   │   ├── ContextSidebar.tsx  # Context engineering sidebar (full CRUD)
-│   │   ├── RecallSection.tsx   # Recalled memories with scores
-│   │   ├── HitlModal.tsx       # HITL approval modal (approve/edit/reject)
-│   │   └── ProviderSelect.tsx  # Provider + model dropdowns
-│   ├── hooks/
-│   │   ├── useSession.ts       # Session token management
-│   │   ├── useSSE.ts           # SSE streaming via fetch + ReadableStream
-│   │   ├── useContext.ts       # Context CRUD (add/remove/reward/search)
-│   │   └── useHitl.ts          # HITL status + toggle + decide
-│   └── lib/
-│       ├── api.ts              # Fetch wrapper with auth headers
-│       └── types.ts            # TypeScript interfaces
+│   │   ├── layout/
+│   │   │   ├── Sidebar.tsx     # Permanent sidebar (nav + threads, 240px)
+│   │   │   ├── Header.tsx      # Minimal header (title + controls + theme picker)
+│   │   │   ├── LogPanel.tsx    # Live log streaming panel
+│   │   │   └── MiddlewarePanel.tsx  # Middleware toggle overlay
+│   │   ├── chat/
+│   │   │   ├── ChatPanel.tsx   # Chat zone (messages + input)
+│   │   │   ├── MessageBubble.tsx  # User/assistant message with ReactMarkdown
+│   │   │   └── ToolStep.tsx    # Collapsible tool call accordion
+│   │   ├── context/
+│   │   │   └── ContextSidebar.tsx  # Context engineering sidebar (full CRUD)
+│   │   ├── finetune/
+│   │   │   └── FineTunePanel.tsx   # Config + training monitor + loss chart + inference
+│   │   ├── hitl/
+│   │   │   └── HitlModal.tsx   # HITL approval modal (approve/edit/reject)
+│   │   ├── agents/
+│   │   │   └── AgentTabs.tsx   # Multi-agent tab bar
+│   │   └── providers/
+│   │       └── ProviderSelect.tsx  # Provider + model dropdowns
+│   ├── stores/                 # Zustand stores (8 stores)
+│   │   ├── chat.ts             # Messages, streaming, SSE consumption
+│   │   ├── finetune.ts         # Fine-tune jobs, config, loss history, inference
+│   │   ├── context.ts          # Context CRUD, prompt preview
+│   │   ├── documents.ts        # RAG document indexing with SSE
+│   │   ├── session.ts          # Session token management
+│   │   ├── agents.ts           # Multi-agent thread management
+│   │   ├── providers.ts        # LLM provider switching
+│   │   └── hitl.ts             # HITL status + toggle
+│   ├── lib/
+│   │   ├── api.ts              # Fetch wrapper with auth headers
+│   │   └── sse.ts              # SSE streaming utility
+│   └── types/
+│       └── index.ts            # TypeScript interfaces (including FineTune*)
 ```
 
 ---
@@ -522,8 +706,14 @@ make format    # Ruff formatter
 | `POST`   | `/hitl`                      | Toggle HITL on/off (recreate agent)                 |
 | `GET`    | `/prompt-preview`            | Dynamic prompt complet tel qu'envoye au LLM         |
 | `GET`    | `/download/{id}/{filename}`  | Telecharger un fichier exporte                      |
+| `POST`   | `/finetune/start`            | Lancer un fine-tuning job (SSE streaming)            |
+| `POST`   | `/finetune/cancel/{job_id}`  | Annuler un job en cours                              |
+| `GET`    | `/finetune/jobs`             | Lister les jobs de la session                        |
+| `GET`    | `/finetune/models`           | Lister les modeles entraines (Modal volume)          |
+| `POST`   | `/finetune/serve`            | Deployer serveur vLLM pour inference                 |
+| `POST`   | `/finetune/infer`            | Proxy chat completion vers vLLM                      |
 
 ---
 
-**Arthur Edmond** · [Swapn]
-Built with LangChain Deep Agents, Modal, and an obsession for clean middleware stacks
+**Arthur Edmond** · [Swapn](https://swapn.com)
+Built with LangChain Deep Agents, Modal, Unsloth, and an obsession for clean middleware stacks

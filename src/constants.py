@@ -15,6 +15,12 @@ class SSEEventType(str, Enum):
     ERROR = "error"
     DONE = "done"
     METRICS = "metrics"
+    FINETUNE_START = "finetune-start"
+    FINETUNE_PROGRESS = "finetune-progress"
+    FINETUNE_VALIDATION = "finetune-validation"
+    FINETUNE_SAVING = "finetune-saving"
+    FINETUNE_DONE = "finetune-done"
+    FINETUNE_ERROR = "finetune-error"
 
 
 class SQLKeyword(str, Enum):

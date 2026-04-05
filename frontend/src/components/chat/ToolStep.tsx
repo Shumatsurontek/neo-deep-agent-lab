@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { ToolStep as ToolStepType } from "../../types";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -67,30 +65,30 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
   }
 
   const statusColor = isRunning
-    ? "text-cb-yellow border-cb-yellow/20 bg-cb-yellow-muted"
+    ? "text-cb-yellow border-cb-yellow/30"
     : isError
-    ? "text-cb-red border-cb-red/20 bg-cb-red-muted"
-    : "text-cb-green border-cb-green/20 bg-cb-green-muted";
+    ? "text-cb-red border-cb-red/30"
+    : "text-cb-green border-cb-green/30";
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-2xl border border-border bg-surface overflow-hidden animate-fade-in">
+      <div className="rounded-lg border border-dashed border-border-default bg-surface-base overflow-hidden animate-fade-in">
         {/* Summary row */}
-        <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors cursor-pointer">
+        <CollapsibleTrigger className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-surface-raised transition-colors cursor-pointer">
           <ChevronRight
-            className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+            className={`w-4 h-4 text-text-dim transition-transform ${open ? "rotate-90" : ""}`}
           />
 
           {isRunning && (
             <Loader2 className="w-4 h-4 text-cb-yellow animate-spin" />
           )}
 
-          <Badge variant="outline" className={`text-[11px] h-6 px-2.5 uppercase tracking-wider font-semibold rounded-lg ${statusColor}`}>
+          <span className={`font-mono text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-md border border-dashed ${statusColor}`}>
             {tool.name}
-          </Badge>
+          </span>
 
           {badge && (
-            <span className="ml-auto text-xs text-muted-foreground font-medium">
+            <span className="ml-auto font-mono text-[11px] text-text-muted">
               {badge}
             </span>
           )}
@@ -98,13 +96,13 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
 
         {/* Body */}
         <CollapsibleContent>
-          <div className="px-4 pb-4 space-y-3 border-t border-border">
+          <div className="px-5 pb-5 space-y-4 border-t border-dashed border-border-default">
             {inputDisplay && (
-              <div className="pt-3">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-widest mb-2 font-semibold">
-                  Input
+              <div className="pt-4">
+                <div className="font-mono text-[11px] text-text-dim uppercase tracking-widest mb-2.5 font-semibold">
+                  // input
                 </div>
-                <pre className="text-[13px] text-cb-blue whitespace-pre-wrap break-all bg-background rounded-xl border border-border px-4 py-3 leading-relaxed font-mono">
+                <pre className="font-mono text-[13px] text-cb-blue whitespace-pre-wrap break-all bg-surface-dim rounded-lg border border-dashed border-border-default px-5 py-4 leading-relaxed">
                   {inputDisplay}
                 </pre>
               </div>
@@ -112,19 +110,19 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
 
             {tool.output && (
               <div>
-                <div className="text-[11px] text-muted-foreground uppercase tracking-widest mb-2 font-semibold">
-                  Output
+                <div className="font-mono text-[11px] text-text-dim uppercase tracking-widest mb-2.5 font-semibold">
+                  // output
                 </div>
 
                 {parsed ? (
-                  <div className="overflow-auto max-h-64 rounded-xl border border-border">
-                    <table className="w-full border-collapse text-[13px]">
+                  <div className="overflow-auto max-h-64 rounded border border-dashed border-border-default">
+                    <table className="w-full border-collapse font-mono text-[12px]">
                       <thead>
                         <tr>
                           {parsed.headers.map((h, i) => (
                             <th
                               key={i}
-                              className="text-left text-[11px] uppercase tracking-wider font-semibold text-muted-foreground bg-secondary sticky top-0 px-4 py-2.5 border-b border-border"
+                              className="text-left text-[10px] uppercase tracking-wider font-semibold text-[#666] bg-surface-raised sticky top-0 px-4 py-2.5 border-b border-dashed border-border-default"
                             >
                               {h}
                             </th>
@@ -133,7 +131,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
                       </thead>
                       <tbody>
                         {parsed.rows.map((row, ri) => (
-                          <tr key={ri} className="hover:bg-secondary/30 transition-colors">
+                          <tr key={ri} className="hover:bg-surface-raised transition-colors">
                             {parsed.headers.map((_, ci) => {
                               const cell = row[ci] || "";
                               const display = cell.length > 100 ? cell.slice(0, 100) + "\u2026" : cell;
@@ -141,7 +139,7 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
                                 <td
                                   key={ci}
                                   title={cell}
-                                  className="px-4 py-2 border-b border-border text-foreground/70 max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap"
+                                  className="px-4 py-2 border-b border-dashed border-border-default text-text-secondary max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap"
                                 >
                                   {display}
                                 </td>
@@ -156,8 +154,8 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
                   <DownloadLink output={tool.output} />
                 ) : (
                   <pre
-                    className={`text-[13px] font-mono whitespace-pre-wrap break-all overflow-y-auto max-h-52 bg-background rounded-xl border border-border px-4 py-3 leading-relaxed ${
-                      isError ? "text-cb-red" : "text-foreground/70"
+                    className={`font-mono text-[13px] whitespace-pre-wrap break-all overflow-y-auto max-h-52 bg-surface-dim rounded border border-dashed border-border-default px-4 py-3 leading-relaxed ${
+                      isError ? "text-cb-red" : "text-text-secondary"
                     }`}
                   >
                     {tool.output.length > 3000 ? tool.output.slice(0, 3000) + "\n\u2026" : tool.output}
@@ -166,24 +164,33 @@ export function ToolStep({ tool }: { tool: ToolStepType }): React.ReactElement {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 mt-3">
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleCopy}>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 font-mono text-[11px] text-text-muted px-3 py-2 rounded-md border border-dashed border-border-default hover:text-cb-blue hover:border-cb-blue/30 transition-colors"
+                  >
                     <Copy className="w-3.5 h-3.5" />
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleDownloadCSV}>
+                    {copied ? "copied" : "copy"}
+                  </button>
+                  <button
+                    onClick={handleDownloadCSV}
+                    className="flex items-center gap-2 font-mono text-[11px] text-text-muted px-3 py-2 rounded-md border border-dashed border-border-default hover:text-cb-blue hover:border-cb-blue/30 transition-colors"
+                  >
                     <Download className="w-3.5 h-3.5" />
-                    CSV
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 rounded-xl" onClick={handleDownloadJSON}>
+                    csv
+                  </button>
+                  <button
+                    onClick={handleDownloadJSON}
+                    className="flex items-center gap-2 font-mono text-[11px] text-text-muted px-3 py-2 rounded-md border border-dashed border-border-default hover:text-cb-blue hover:border-cb-blue/30 transition-colors"
+                  >
                     <Download className="w-3.5 h-3.5" />
-                    JSON
-                  </Button>
+                    json
+                  </button>
                 </div>
               </div>
             )}
 
             {isRunning && !tool.output && (
-              <div className="text-sm text-cb-yellow/60 italic pt-3">
+              <div className="font-mono text-xs text-cb-yellow/60 italic pt-3">
                 executing...
               </div>
             )}
@@ -198,7 +205,7 @@ function DownloadLink({ output }: { output: string }): React.ReactElement {
   const match = output.match(/\/download\/([a-f0-9-]+)\/([^\s]+)/);
   if (!match) {
     return (
-      <pre className="text-[13px] font-mono text-foreground/70 bg-background border border-border rounded-xl px-4 py-3">
+      <pre className="font-mono text-[13px] text-text-secondary bg-surface-dim border border-dashed border-border-default rounded px-4 py-3">
         {output}
       </pre>
     );
@@ -214,13 +221,13 @@ function DownloadLink({ output }: { output: string }): React.ReactElement {
         <img
           src={url}
           alt={filename}
-          className="max-w-full rounded-xl border border-border"
+          className="max-w-full rounded border border-dashed border-border-default"
         />
       )}
       <a
         href={url}
         download
-        className="inline-flex items-center gap-2 text-sm text-foreground font-medium px-4 py-2.5 border border-border rounded-xl hover:bg-secondary/50 transition-colors no-underline"
+        className="inline-flex items-center gap-2 font-mono text-xs text-cb-blue px-4 py-2.5 border border-dashed border-cb-blue/30 rounded hover:bg-cb-blue/5 transition-colors no-underline"
       >
         <Download className="w-4 h-4" />
         {filename}

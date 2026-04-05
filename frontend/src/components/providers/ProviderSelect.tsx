@@ -23,12 +23,12 @@ export function ProviderSelect() {
           if (p) switchProvider(p.id, p.models[0] ?? "");
         }}
       >
-        <SelectTrigger className="h-8 w-auto min-w-[90px] text-xs gap-1.5 rounded-xl font-medium">
+        <SelectTrigger className="h-7 w-auto min-w-[80px] font-mono text-[10px] gap-1.5 rounded border-dashed">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="font-mono text-xs">
           {providers.map((p) => (
-            <SelectItem key={p.id} value={p.id} className="text-sm">
+            <SelectItem key={p.id} value={p.id}>
               {p.name}
             </SelectItem>
           ))}
@@ -39,12 +39,12 @@ export function ProviderSelect() {
         value={currentModel}
         onValueChange={(val) => { if (val) switchProvider(currentProvider, val); }}
       >
-        <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs gap-1.5 rounded-xl font-medium">
+        <SelectTrigger className="h-7 w-auto min-w-[100px] font-mono text-[10px] gap-1.5 rounded border-dashed">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="font-mono text-xs">
           {models.map((m) => (
-            <SelectItem key={m} value={m} className="text-sm">
+            <SelectItem key={m} value={m}>
               {m}
             </SelectItem>
           ))}
@@ -52,7 +52,7 @@ export function ProviderSelect() {
       </Select>
 
       {switching && (
-        <Loader2 className="w-4 h-4 text-cb-yellow animate-spin" />
+        <Loader2 className="w-3.5 h-3.5 text-cb-yellow animate-spin" />
       )}
     </div>
   );

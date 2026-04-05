@@ -1,7 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
 import { ScrollArea } from "../ui/scroll-area";
 import {
   Select,
@@ -20,7 +17,7 @@ interface LogEntry {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  DEBUG: "text-muted-foreground",
+  DEBUG: "text-text-muted",
   INFO: "text-cb-blue",
   WARNING: "text-cb-yellow",
   ERROR: "text-cb-red",
@@ -101,78 +98,78 @@ export function LogPanel({ visible, onClose }: { visible: boolean; onClose: () =
   });
 
   return (
-    <div className="flex flex-col h-[220px] border-t border-border bg-surface">
+    <div className="flex flex-col h-[280px] border-t border-dashed border-border-default bg-surface-dim">
       {/* Header */}
-      <div className="flex items-center gap-3 shrink-0 px-5 py-2.5 border-b border-border">
+      <div className="flex items-center gap-3 shrink-0 px-5 py-3 border-b border-dashed border-border-default">
         <div className="flex items-center gap-2.5">
           <div
             className="w-2 h-2 rounded-full"
-            style={{ background: connected ? "var(--color-cb-green)" : "var(--color-cb-red)" }}
+            style={{ background: connected ? "#00FF88" : "#FF4444" }}
           />
-          <span className="text-sm font-semibold text-foreground">
-            Logs
+          <span className="font-mono text-xs text-text-muted">
+            // logs
           </span>
-          <Badge variant="outline" className="text-[11px] h-6 px-2.5 font-medium rounded-lg">
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded border border-dashed border-border-default text-text-muted">
             {filtered.length}/{logs.length}
-          </Badge>
+          </span>
         </div>
 
         <Select value={levelFilter} onValueChange={(v) => { if (v) setLevelFilter(v); }}>
-          <SelectTrigger className="h-8 w-28 text-xs rounded-xl">
+          <SelectTrigger className="h-7 w-24 font-mono text-[10px] rounded border-dashed">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="font-mono text-xs">
             {["ALL", "DEBUG", "INFO", "WARNING", "ERROR"].map((l) => (
-              <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
+              <SelectItem key={l} value={l}>{l}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Input
+        <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="filter..."
-          className="h-8 w-36 text-xs rounded-xl"
+          placeholder="filter()..."
+          className="h-7 w-36 font-mono text-[10px] bg-surface-base border border-dashed border-border-default rounded px-2.5 text-text-primary placeholder:text-text-dim focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none"
         />
 
-        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer ml-auto select-none">
+        <label className="flex items-center gap-2 font-mono text-[10px] text-text-muted cursor-pointer ml-auto select-none">
           <input
             type="checkbox"
             checked={autoScroll}
             onChange={(e) => setAutoScroll(e.target.checked)}
-            className="w-3.5 h-3.5 rounded border-border accent-cb-blue"
+            className="w-3 h-3 rounded accent-cb-blue"
           />
-          Auto-scroll
+          auto_scroll
         </label>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setLogs([])}>
-          <Trash2 className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
+        <button className="p-1 rounded text-text-dim hover:text-cb-yellow transition-colors" onClick={() => setLogs([])}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+        <button className="p-1 rounded text-text-dim hover:text-text-secondary transition-colors" onClick={onClose}>
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Log entries */}
       <ScrollArea className="flex-1">
-        <div className="text-xs leading-6 px-5 py-2 font-mono">
+        <div className="font-mono text-[11px] leading-6 px-5 py-2">
           {filtered.length === 0 ? (
-            <div className="text-muted-foreground text-center py-6 text-sm font-sans">
-              {!connected ? "connecting to log stream..." : "waiting for logs..."}
+            <div className="text-text-dim text-center py-6 text-xs">
+              {!connected ? "// connecting to log stream..." : "// waiting for logs..."}
             </div>
           ) : (
             filtered.map((entry, i) => (
               <div key={i} className="flex gap-3 py-px">
-                <span className="text-muted-foreground shrink-0 w-[76px]">
+                <span className="text-text-dim shrink-0 w-[76px]">
                   {entry.timestamp.split("T")[1]?.slice(0, 12) || entry.timestamp}
                 </span>
-                <span className={`shrink-0 w-10 font-semibold ${LEVEL_COLORS[entry.level] || "text-foreground"}`}>
+                <span className={`shrink-0 w-10 font-semibold ${LEVEL_COLORS[entry.level] || "text-text-primary"}`}>
                   {entry.level.slice(0, 4)}
                 </span>
                 <span className="text-cb-purple/50 shrink-0 w-[130px] truncate">
                   {entry.logger}
                 </span>
-                <span className="text-foreground/70 flex-1 truncate">
+                <span className="text-text-secondary flex-1 truncate">
                   {entry.message}
                 </span>
               </div>

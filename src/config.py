@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     MODAL_TOKEN_ID: str = ""
     MODAL_TOKEN_SECRET: str = ""
 
+    # W&B (Weights & Biases)
+    WANDB_API_KEY: str = ""
+
     # LLM
     TAVILY_API_KEY: str = ""
     LLM_PROVIDER: str = "openai"
