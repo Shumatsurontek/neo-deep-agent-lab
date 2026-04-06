@@ -331,9 +331,14 @@ def _run_training(config, model, tokenizer, job_id, report_to):
         },
     )
 
+    # Merge LoRA adapters into base model for vLLM-compatible checkpoint
+    # merge_and_unload() fuses the low-rank weights into the base weights
+    # and produces a standalone model with config.json (required by vLLM)
+    merged_model = trainer.model.merge_and_unload()
+
     model_name = config["model"].replace("/", "_")
     output_path = f"/cache/models/{model_name}_{job_id[:8]}"
-    trainer.save_model(output_path)
+    merged_model.save_pretrained(output_path)
     tokenizer.save_pretrained(output_path)
     cache_vol.commit()
 
@@ -372,13 +377,28 @@ def _run_training(config, model, tokenizer, job_id, report_to):
 VLLM_PORT = 8000
 
 vllm_image = (
-    modal.Image.from_registry(
-        "nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12"
-    )
+    modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
     .entrypoint([])
-    .pip_install("vllm==0.19.0", "transformers>=5.0")
-    .env({"VLLM_USE_V1": "1"})
+    .uv_pip_install("vllm==0.19.0")
+    .uv_pip_install("transformers==5.5.0")
 )
+
+
+ACTIVE_MODEL_MARKER = "/cache/.active_model"
+
+
+@app.function(
+    image=generic_image,
+    volumes={"/cache": cache_vol},
+    timeout=30,
+)
+def set_active_model(model_path: str) -> str:
+    """Write a marker file so serve_model knows which model to load."""
+    import pathlib
+
+    pathlib.Path(ACTIVE_MODEL_MARKER).write_text(model_path)
+    cache_vol.commit()
+    return model_path
 
 
 @app.function(
@@ -391,38 +411,55 @@ vllm_image = (
 @modal.concurrent(max_inputs=32)
 @modal.web_server(port=VLLM_PORT, startup_timeout=10 * 60)
 def serve_model():
-    """Serve the latest trained model via vLLM (OpenAI-compatible)."""
+    """Serve the selected model via vLLM (OpenAI-compatible)."""
     import pathlib
     import subprocess  # noqa: S404
+
+    # Read selected model from marker file
+    marker = pathlib.Path(ACTIVE_MODEL_MARKER)
+    if marker.exists():
+        model_path = marker.read_text().strip()
+        if pathlib.Path(model_path).exists():
+            print(f"Serving selected model: {model_path}")
+        else:
+            print(f"Marker path {model_path} not found, falling back")
+            model_path = _find_latest_model()
+    else:
+        model_path = _find_latest_model()
+
+    cmd = " ".join(
+        [
+            "vllm",
+            "serve",
+            model_path,
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(VLLM_PORT),
+            "--trust-remote-code",
+            "--uvicorn-log-level=info",
+        ]
+    )
+    subprocess.Popen(cmd, shell=True)  # noqa: S602, S603
+
+
+def _find_latest_model() -> str:
+    """Fallback: find the newest model directory."""
+    import pathlib
 
     models_dir = pathlib.Path("/cache/models")
     if not models_dir.exists():
         raise FileNotFoundError("No models directory found")
 
     model_dirs = [
-        d
-        for d in models_dir.iterdir()
-        if d.is_dir() and not d.name.startswith(".")
+        d for d in models_dir.iterdir() if d.is_dir() and not d.name.startswith(".")
     ]
     if not model_dirs:
-        raise FileNotFoundError(
-            "No trained models found in /cache/models"
-        )
+        raise FileNotFoundError("No trained models in /cache/models")
 
     latest = max(model_dirs, key=lambda d: d.stat().st_mtime)
-    model_path = str(latest)
-
-    cmd = " ".join([
-        "vllm",
-        "serve",
-        model_path,
-        "--host",
-        "0.0.0.0",
-        "--port",
-        str(VLLM_PORT),
-        "--uvicorn-log-level=info",
-    ])
-    subprocess.Popen(cmd, shell=True)  # noqa: S602, S603
+    print(f"Serving latest model: {latest}")
+    return str(latest)
 
 
 @app.function(

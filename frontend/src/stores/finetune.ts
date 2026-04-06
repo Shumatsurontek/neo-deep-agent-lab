@@ -22,6 +22,7 @@ interface FineTuneState {
 
   // Inference state
   trainedModels: TrainedModel[];
+  selectedModelPath: string | null;
   servingUrl: string | null;
   isServing: boolean;
   inferMessages: InferMessage[];
@@ -34,6 +35,7 @@ interface FineTuneState {
   clearEvents: () => void;
 
   // Inference methods
+  selectModel: (path: string) => void;
   loadModels: () => Promise<void>;
   deployModel: () => Promise<void>;
   sendInference: (prompt: string) => Promise<void>;
@@ -91,6 +93,7 @@ export const useFineTuneStore = create<FineTuneState>((set, get) => ({
   config: { ...DEFAULT_CONFIG },
   lossHistory: [],
   trainedModels: [],
+  selectedModelPath: null,
   servingUrl: null,
   isServing: false,
   inferMessages: [],
@@ -173,17 +176,27 @@ export const useFineTuneStore = create<FineTuneState>((set, get) => ({
 
   clearEvents: () => set({ events: [], lossHistory: [] }),
 
+  selectModel: (path) => set({ selectedModelPath: path }),
+
   loadModels: async () => {
     try {
       const models = await apiGet<TrainedModel[]>("/finetune/models");
-      set({ trainedModels: models });
+      set((s) => ({
+        trainedModels: models,
+        // Auto-select first model if none selected
+        selectedModelPath: s.selectedModelPath ?? models[0]?.path ?? null,
+      }));
     } catch { /* ignore */ }
   },
 
   deployModel: async () => {
+    const { selectedModelPath } = get();
     set({ isServing: true });
     try {
-      const result = await apiPost<{ url?: string; error?: string }>("/finetune/serve", {});
+      const result = await apiPost<{ url?: string; error?: string }>(
+        "/finetune/serve",
+        { model_path: selectedModelPath ?? "" },
+      );
       if (result.url) {
         set({ servingUrl: result.url, isServing: false });
       } else {

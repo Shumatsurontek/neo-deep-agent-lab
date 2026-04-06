@@ -262,9 +262,14 @@ async def serve_model(
     """Deploy a vLLM inference server for a trained model."""
     global _serving_url
     try:
+        # Write selected model path to a marker file in the volume
+        # so the vLLM function knows which model to load
+        if req.model_path:
+            set_fn = modal.Function.from_name(_MODAL_APP_NAME, "set_active_model")
+            await asyncio.to_thread(set_fn.remote, req.model_path)
+
         fn = modal.Function.from_name(_MODAL_APP_NAME, "serve_model")
-        # web_server functions are deployed, get their URL
-        url = fn.web_url
+        url = await asyncio.to_thread(fn.get_web_url)
         _serving_url = url
         return {"url": url, "status": "serving"}
     except Exception as exc:
