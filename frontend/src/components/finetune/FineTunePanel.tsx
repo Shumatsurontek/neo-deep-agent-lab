@@ -22,17 +22,22 @@ import {
   Send,
   Eye,
   EyeOff,
-  Trash2,
   RefreshCw,
+  Upload,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const MODELS = [
-  { id: "Qwen/Qwen3.5-0.8B", label: "Qwen 3.5 — 0.8B", vram: "3 GB", engine: "Unsloth" },
-  { id: "Qwen/Qwen3.5-2B", label: "Qwen 3.5 — 2B", vram: "5 GB", engine: "Unsloth" },
-  { id: "Qwen/Qwen3.5-4B", label: "Qwen 3.5 — 4B", vram: "10 GB", engine: "Unsloth" },
-  { id: "Qwen/Qwen3.5-9B", label: "Qwen 3.5 — 9B", vram: "22 GB", engine: "Unsloth" },
+  { id: "unsloth/Qwen3.5-0.8B", label: "Qwen 3.5 — 0.8B", vram: "3 GB", engine: "Unsloth" },
+  { id: "unsloth/Qwen3.5-2B", label: "Qwen 3.5 — 2B", vram: "5 GB", engine: "Unsloth" },
+  { id: "unsloth/Qwen3.5-4B", label: "Qwen 3.5 — 4B", vram: "10 GB", engine: "Unsloth" },
+  { id: "unsloth/Qwen3.5-9B", label: "Qwen 3.5 — 9B", vram: "22 GB", engine: "Unsloth" },
   { id: "LiquidAI/LFM2.5-350M", label: "LFM 2.5 — 350M", vram: "<1 GB", engine: "Transformers" },
+];
+
+const DATASETS = [
+  { id: "Shumatsurontek/neo-sql-reasoning-combined", label: "SQL+Reasoning+Math", records: "7.2K" },
+  { id: "gretelai/synthetic_text_to_sql", label: "SQL Only", records: "105K" },
 ];
 
 const GPUS = [
@@ -47,11 +52,14 @@ export function FineTunePanel() {
     isTraining, activeJob, events, lossHistory, jobs,
     startJob, cancelJob, loadJobs, clearEvents,
     trainedModels, selectedModelPath, servingUrl, isServing, inferMessages, isInferring,
-    selectModel, loadModels, deployModel, sendInference,
+    selectModel, loadModels, pushModel, deployModel, sendInference,
   } = useFineTuneStore();
 
   const [inferInput, setInferInput] = useState("");
   const [showWandbKey, setShowWandbKey] = useState(false);
+  const [showHfToken, setShowHfToken] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(true);
   const [eventsOpen, setEventsOpen] = useState(false);
   const inferBottomRef = useRef<HTMLDivElement>(null);
@@ -131,9 +139,23 @@ export function FineTunePanel() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="font-mono text-[10px] text-text-dim uppercase tracking-widest mb-2 block">dataset</label>
-                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-dashed border-border-default bg-surface-dim">
-                          <Database className="w-3.5 h-3.5 text-cb-blue shrink-0" />
-                          <span className="font-mono text-[10px] text-text-secondary truncate">synthetic_text_to_sql</span>
+                        <div className="space-y-1">
+                          {DATASETS.map((d) => (
+                            <button
+                              key={d.id}
+                              onClick={() => updateConfig({ dataset: d.id })}
+                              disabled={isTraining}
+                              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border border-dashed text-left transition-all ${
+                                config.dataset === d.id
+                                  ? "border-cb-blue/40 bg-cb-blue/5 text-cb-blue"
+                                  : "border-border-default text-text-muted hover:border-cb-blue/20"
+                              } disabled:opacity-50`}
+                            >
+                              <Database className="w-3 h-3 shrink-0" />
+                              <span className="font-mono text-[10px] flex-1 truncate">{d.label}</span>
+                              <span className="font-mono text-[9px] text-text-dim">{d.records}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                       <div>
@@ -185,27 +207,74 @@ export function FineTunePanel() {
                       </div>
                     </div>
 
-                    {/* W&B */}
-                    <div>
-                      <label className="font-mono text-[10px] text-text-dim uppercase tracking-widest mb-2 block">wandb</label>
-                      <div className="relative">
-                        <input
-                          type={showWandbKey ? "text" : "password"}
-                          value={config.wandb_api_key}
-                          onChange={(e) => updateConfig({ wandb_api_key: e.target.value })}
-                          placeholder="api_key (optional)..."
-                          disabled={isTraining}
-                          className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-3 pr-8 text-text-primary placeholder:text-text-dim focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none disabled:opacity-50"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowWandbKey(!showWandbKey)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
-                        >
-                          {showWandbKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                        </button>
+                    {/* W&B + HF Push row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-mono text-[10px] text-text-dim uppercase tracking-widest mb-2 block">wandb</label>
+                        <div className="relative">
+                          <input
+                            type={showWandbKey ? "text" : "password"}
+                            value={config.wandb_api_key}
+                            onChange={(e) => updateConfig({ wandb_api_key: e.target.value })}
+                            placeholder="api_key (optional)..."
+                            disabled={isTraining}
+                            className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-3 pr-8 text-text-primary placeholder:text-text-dim focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none disabled:opacity-50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowWandbKey(!showWandbKey)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
+                          >
+                            {showWandbKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="font-mono text-[10px] text-text-dim uppercase tracking-widest mb-2 block">hf push</label>
+                        <div className="relative">
+                          <input
+                            type={showHfToken ? "text" : "password"}
+                            value={config.hf_token}
+                            onChange={(e) => updateConfig({ hf_token: e.target.value })}
+                            placeholder="hf_token (optional)..."
+                            disabled={isTraining}
+                            className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-3 pr-8 text-text-primary placeholder:text-text-dim focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none disabled:opacity-50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowHfToken(!showHfToken)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
+                          >
+                            {showHfToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    {/* HF Repo + Push toggle */}
+                    {config.hf_token && (
+                      <div className="flex items-center gap-3">
+                        <input
+                          value={config.hf_repo}
+                          onChange={(e) => updateConfig({ hf_repo: e.target.value })}
+                          placeholder="Shumatsurontek/lfm2-sql-finetuned"
+                          disabled={isTraining}
+                          className="flex-1 h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-3 text-text-primary placeholder:text-text-dim focus:border-cb-blue focus:ring-1 focus:ring-cb-blue outline-none disabled:opacity-50"
+                        />
+                        <button
+                          onClick={() => updateConfig({ hf_push: !config.hf_push })}
+                          disabled={isTraining}
+                          className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-md border border-dashed transition-all shrink-0 ${
+                            config.hf_push
+                              ? "border-cb-blue/40 bg-cb-blue/10 text-cb-blue"
+                              : "border-border-default text-text-dim hover:border-cb-blue/20"
+                          } disabled:opacity-50`}
+                        >
+                          <Upload className="w-3 h-3" />
+                          {config.hf_push ? "push: on" : "push: off"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </CollapsibleContent>
               </div>
@@ -395,18 +464,42 @@ export function FineTunePanel() {
           )}
 
           {trainedModels.length > 0 && (
-            <button
-              onClick={deployModel}
-              disabled={isServing}
-              className={`w-full flex items-center justify-center gap-2 font-mono text-xs py-2.5 rounded-lg border border-dashed transition-colors ${
-                servingUrl
-                  ? "border-cb-green/30 text-cb-green bg-cb-green/5"
-                  : "border-cb-cyan/30 text-cb-cyan hover:bg-cb-cyan/5"
-              } disabled:opacity-50`}
-            >
-              {isServing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
-              {servingUrl ? "serving()" : "deploy()"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={deployModel}
+                disabled={isServing}
+                className={`flex-1 flex items-center justify-center gap-2 font-mono text-xs py-2.5 rounded-lg border border-dashed transition-colors ${
+                  servingUrl
+                    ? "border-cb-green/30 text-cb-green bg-cb-green/5"
+                    : "border-cb-cyan/30 text-cb-cyan hover:bg-cb-cyan/5"
+                } disabled:opacity-50`}
+              >
+                {isServing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+                {servingUrl ? "serving()" : "deploy()"}
+              </button>
+              {config.hf_token && config.hf_repo && selectedModelPath && (
+                <button
+                  onClick={async () => {
+                    setIsPushing(true);
+                    setPushResult(null);
+                    const r = await pushModel();
+                    setPushResult(r);
+                    setIsPushing(false);
+                  }}
+                  disabled={isPushing}
+                  className="flex items-center justify-center gap-2 font-mono text-xs px-4 py-2.5 rounded-lg border border-dashed border-cb-blue/30 text-cb-blue hover:bg-cb-blue/5 transition-colors disabled:opacity-50"
+                >
+                  {isPushing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  push()
+                </button>
+              )}
+            </div>
+          )}
+
+          {pushResult && (
+            <div className="font-mono text-[9px] text-cb-green px-2.5 py-1.5 rounded-md border border-dashed border-cb-green/20 bg-cb-green/5 break-all">
+              {pushResult}
+            </div>
           )}
 
           {servingUrl && (

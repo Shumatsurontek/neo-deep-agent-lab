@@ -312,6 +312,13 @@ curl -X POST <vllm_url>/v1/chat/completions \
   }'
 ```
 
+### Training Results
+
+| Model | Dataset | Epochs | Final Loss | Steps | Duration | GPU | TPS |
+|-------|---------|--------|-----------|-------|----------|-----|-----|
+| LFM2.5-350M | synthetic_text_to_sql (10K) | 3 | 0.538 | 7,500 | 4m 04s | L40S | 30.6 |
+| LFM2.5-350M | synthetic_text_to_sql (10K) | 1 | 0.602 | 2,500 | 1m 52s | L40S | 31.0 |
+
 ### Endpoints Fine-Tuning
 
 | Method | Endpoint | Description |

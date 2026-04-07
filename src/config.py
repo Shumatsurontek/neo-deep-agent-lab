@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # W&B (Weights & Biases)
     WANDB_API_KEY: str = ""
 
+    # HuggingFace Hub
+    HF_TOKEN: str = ""
+
     # LLM
     TAVILY_API_KEY: str = ""
     LLM_PROVIDER: str = "openai"

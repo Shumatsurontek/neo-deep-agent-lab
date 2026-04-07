@@ -8,11 +8,20 @@ from pydantic import BaseModel, Field
 
 
 class ModelChoice(str, Enum):
-    QWEN3_5_0_8B = "Qwen/Qwen3.5-0.8B"
-    QWEN3_5_2B = "Qwen/Qwen3.5-2B"
-    QWEN3_5_4B = "Qwen/Qwen3.5-4B"
-    QWEN3_5_9B = "Qwen/Qwen3.5-9B"
+    QWEN3_5_0_8B = "unsloth/Qwen3.5-0.8B"
+    QWEN3_5_2B = "unsloth/Qwen3.5-2B"
+    QWEN3_5_4B = "unsloth/Qwen3.5-4B"
+    QWEN3_5_9B = "unsloth/Qwen3.5-9B"
     LFM2_5_350M = "LiquidAI/LFM2.5-350M"
+
+
+# Models that need the Unsloth training path
+UNSLOTH_MODELS = {
+    ModelChoice.QWEN3_5_0_8B,
+    ModelChoice.QWEN3_5_2B,
+    ModelChoice.QWEN3_5_4B,
+    ModelChoice.QWEN3_5_9B,
+}
 
 
 class GPUChoice(str, Enum):
@@ -33,6 +42,9 @@ class FineTuneConfig(BaseModel):
     lora_alpha: int = Field(default=32, ge=4, le=256)
     dataset_max_samples: int = Field(default=10000, ge=100, le=105000)
     wandb_api_key: str = ""
+    hf_token: str = ""
+    hf_push: bool = False
+    hf_repo: str = ""
 
 
 class JobStatus(str, Enum):

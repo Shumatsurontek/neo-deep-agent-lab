@@ -37,12 +37,13 @@ interface FineTuneState {
   // Inference methods
   selectModel: (path: string) => void;
   loadModels: () => Promise<void>;
+  pushModel: () => Promise<string | null>;
   deployModel: () => Promise<void>;
   sendInference: (prompt: string) => Promise<void>;
 }
 
 const DEFAULT_CONFIG: FineTuneConfig = {
-  model: "Qwen/Qwen3.5-2B",
+  model: "unsloth/Qwen3.5-2B",
   dataset: "gretelai/synthetic_text_to_sql",
   gpu: "L40S",
   num_epochs: 3,
@@ -53,6 +54,9 @@ const DEFAULT_CONFIG: FineTuneConfig = {
   lora_alpha: 32,
   dataset_max_samples: 10000,
   wandb_api_key: "",
+  hf_token: "",
+  hf_push: false,
+  hf_repo: "",
 };
 
 async function consumeSSE(
@@ -177,6 +181,23 @@ export const useFineTuneStore = create<FineTuneState>((set, get) => ({
   clearEvents: () => set({ events: [], lossHistory: [] }),
 
   selectModel: (path) => set({ selectedModelPath: path }),
+
+  pushModel: async () => {
+    const { selectedModelPath, config } = get();
+    if (!selectedModelPath || !config.hf_token || !config.hf_repo) return null;
+    try {
+      const result = await apiPost<{ url?: string; error?: string }>("/finetune/push", {
+        model_path: selectedModelPath,
+        hf_repo: config.hf_repo,
+        hf_token: config.hf_token,
+        base_model: config.model,
+        dataset: config.dataset,
+      });
+      return result.url ?? result.error ?? null;
+    } catch (err) {
+      return String(err);
+    }
+  },
 
   loadModels: async () => {
     try {

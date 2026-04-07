@@ -48,7 +48,8 @@ def _sse(data: dict) -> str:
 
 def _get_train_function(model_name: str) -> modal.Function:
     """Look up the correct deployed Modal training function."""
-    func_name = "train_qwen" if model_name.startswith("Qwen/") else "train_generic"
+    is_qwen = "Qwen" in model_name or "qwen" in model_name
+    func_name = "train_qwen" if is_qwen else "train_generic"
     try:
         return modal.Function.from_name(_MODAL_APP_NAME, func_name)
     except modal.exception.NotFoundError:
@@ -248,6 +249,36 @@ async def list_models(
     except Exception as exc:
         logger.warning("Failed to list models: %s", exc)
         return []
+
+
+class PushRequest(BaseModel):
+    model_path: str
+    hf_repo: str
+    hf_token: str
+    base_model: str = "LiquidAI/LFM2.5-350M"
+    dataset: str = "gretelai/synthetic_text_to_sql"
+
+
+@router.post("/push")
+async def push_model(
+    req: PushRequest,
+    _session: Session = Depends(_get_session),
+):
+    """Push a trained model from Modal volume to HuggingFace Hub."""
+    try:
+        fn = modal.Function.from_name(_MODAL_APP_NAME, "push_model_to_hub")
+        result = await asyncio.to_thread(
+            fn.remote,
+            req.model_path,
+            req.hf_repo,
+            req.hf_token,
+            req.base_model,
+            req.dataset,
+        )
+        return {"url": result, "status": "pushed"}
+    except Exception as exc:
+        logger.exception("Failed to push model")
+        return {"error": str(exc)}
 
 
 class ServeRequest(BaseModel):

@@ -122,6 +122,9 @@ export interface FineTuneConfig {
   lora_alpha: number;
   dataset_max_samples: number;
   wandb_api_key: string;
+  hf_token: string;
+  hf_push: boolean;
+  hf_repo: string;
 }
 
 export interface TrainedModel {
