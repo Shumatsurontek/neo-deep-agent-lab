@@ -189,7 +189,7 @@ generic_image = modal.Image.debian_slim(python_version="3.11").pip_install(
 )
 def train_generic(config_json: str, job_id: str) -> str:
     """Fine-tune a generic model using Transformers + PEFT LoRA."""
-    import torch
+    import torch  # noqa: F811
     from peft import LoraConfig, get_peft_model
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -249,8 +249,8 @@ def train_generic(config_json: str, job_id: str) -> str:
 def _run_training(config, model, tokenizer, job_id, report_to):
     """Shared SFT training logic."""
     from datasets import load_dataset
-    from transformers import TrainerCallback
-    from trl import SFTConfig, SFTTrainer
+    from transformers import TrainerCallback  # noqa: F811
+    from trl import SFTConfig, SFTTrainer  # noqa: F811
 
     _emit(
         job_id,
@@ -1006,3 +1006,642 @@ def list_trained_models() -> str:
                 }
             )
     return json.dumps(models)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Evaluation: lm-eval-harness with vLLM backend
+# ═══════════════════════════════════════════════════════════════════
+
+eval_image = (
+    modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
+    .entrypoint([])
+    .uv_pip_install("torch")
+    .uv_pip_install("transformers==5.5.0")
+    .uv_pip_install("lm_eval[hf,math,ifeval]")
+    .uv_pip_install("accelerate")
+    .uv_pip_install("huggingface_hub>=0.34")
+)
+
+
+@app.function(
+    image=eval_image,
+    gpu="L40S",
+    volumes={"/cache": cache_vol},
+    timeout=7200,
+)
+def run_evaluation(
+    model_id: str,
+    tasks: str = "leaderboard_bbh,leaderboard_ifeval,leaderboard_musr",
+    num_fewshot: int | None = None,
+    limit: int | None = None,
+    job_id: str = "",
+) -> str:
+    """Run lm-eval-harness benchmarks on a model using vLLM backend.
+
+    Args:
+        model_id: HF repo (e.g. "unsloth/Qwen3.5-4B") or local volume path
+        tasks: comma-separated lm-eval task names
+        num_fewshot: override default few-shot count (None = task default)
+        limit: max samples per task (useful for quick smoke tests)
+        job_id: optional job_id for progress tracking
+    """
+    import lm_eval
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-progress",
+                "message": f"Starting evaluation: {model_id} on [{tasks}]...",
+            },
+        )
+
+    # Resolve model path: check volume first, then treat as HF repo
+    import pathlib
+
+    model_path = model_id
+    vol_path = pathlib.Path(model_id)
+    if vol_path.exists():
+        model_path = str(vol_path)
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"Using local model: {model_path}",
+                },
+            )
+
+    model_args = f"pretrained={model_path},dtype=bfloat16,trust_remote_code=True"
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-progress",
+                "message": "Loading model (HF Transformers)...",
+            },
+        )
+
+    kwargs = {
+        "model": "hf",
+        "model_args": model_args,
+        "tasks": tasks.split(","),
+        "batch_size": "auto",
+        "log_samples": False,
+        "device": "cuda:0",
+        "apply_chat_template": True,
+        "fewshot_as_multiturn": True,
+    }
+    if num_fewshot is not None:
+        kwargs["num_fewshot"] = num_fewshot
+    if limit is not None:
+        kwargs["limit"] = limit
+
+    results = lm_eval.simple_evaluate(**kwargs)
+
+    # Extract scores
+    scores = {}
+    for task_name, task_result in results["results"].items():
+        task_scores = {}
+        for metric, value in task_result.items():
+            if metric.endswith(",none"):
+                clean_name = metric.replace(",none", "")
+                if isinstance(value, (int, float)):
+                    task_scores[clean_name] = round(value, 4)
+        scores[task_name] = task_scores
+
+    output = {
+        "model": model_id,
+        "tasks": tasks,
+        "scores": scores,
+    }
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-done",
+                "message": f"Evaluation complete for {model_id}",
+                "scores": scores,
+            },
+        )
+
+    return json.dumps(output, indent=2)
+
+
+@app.function(
+    image=eval_image,
+    gpu="L40S",
+    volumes={"/cache": cache_vol},
+    timeout=14400,
+)
+def run_comparison(
+    baseline_model: str,
+    finetuned_model: str,
+    tasks: str = "leaderboard_bbh,leaderboard_ifeval,leaderboard_musr",
+    num_fewshot: int | None = None,
+    limit: int | None = None,
+    job_id: str = "",
+    hf_token: str = "",
+    hf_repo: str = "",
+) -> str:
+    """Run benchmarks on baseline vs fine-tuned model and compare.
+
+    Returns JSON with side-by-side scores and deltas.
+    """
+    import lm_eval
+
+    def _eval_model(model_id: str, label: str) -> dict:
+        import pathlib
+
+        model_path = model_id
+        vol_path = pathlib.Path(model_id)
+        if vol_path.exists():
+            model_path = str(vol_path)
+
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"[{label}] Loading {model_id} (HF Transformers)...",
+                },
+            )
+
+        model_args = f"pretrained={model_path},dtype=bfloat16,trust_remote_code=True"
+
+        kwargs = {
+            "model": "hf",
+            "model_args": model_args,
+            "tasks": tasks.split(","),
+            "batch_size": "auto",
+            "log_samples": False,
+            "device": "cuda:0",
+            "apply_chat_template": True,
+            "fewshot_as_multiturn": True,
+        }
+        if num_fewshot is not None:
+            kwargs["num_fewshot"] = num_fewshot
+        if limit is not None:
+            kwargs["limit"] = limit
+
+        results = lm_eval.simple_evaluate(**kwargs)
+
+        scores = {}
+        for task_name, task_result in results["results"].items():
+            task_scores = {}
+            for metric, value in task_result.items():
+                if metric.endswith(",none"):
+                    clean_name = metric.replace(",none", "")
+                    if isinstance(value, (int, float)):
+                        task_scores[clean_name] = round(value, 4)
+            scores[task_name] = task_scores
+
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"[{label}] Done: {scores}",
+                    "scores": scores,
+                },
+            )
+
+        return scores
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-progress",
+                "message": f"Starting comparison: {baseline_model} vs {finetuned_model}",
+            },
+        )
+
+    baseline_scores = _eval_model(baseline_model, "BASELINE")
+    finetuned_scores = _eval_model(finetuned_model, "FINETUNED")
+
+    # Build comparison table
+    comparison = {}
+    all_tasks = set(baseline_scores) | set(finetuned_scores)
+    for task in all_tasks:
+        b = baseline_scores.get(task, {})
+        f = finetuned_scores.get(task, {})
+        all_metrics = set(b) | set(f)
+        task_cmp = {}
+        for metric in all_metrics:
+            bv = b.get(metric)
+            fv = f.get(metric)
+            delta = None
+            if bv is not None and fv is not None:
+                delta = round(fv - bv, 4)
+            task_cmp[metric] = {
+                "baseline": bv,
+                "finetuned": fv,
+                "delta": delta,
+            }
+        comparison[task] = task_cmp
+
+    output = {
+        "baseline_model": baseline_model,
+        "finetuned_model": finetuned_model,
+        "tasks": tasks,
+        "baseline_scores": baseline_scores,
+        "finetuned_scores": finetuned_scores,
+        "comparison": comparison,
+    }
+
+    # Push benchmark results to HF model card
+    tok_status = "set" if hf_token else "EMPTY"
+    print(f"[Eval Push] hf_token={tok_status}, hf_repo={hf_repo or 'EMPTY'}")
+    if hf_token and hf_repo:
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"Pushing benchmark results to {hf_repo}...",
+                },
+            )
+
+        from huggingface_hub import HfApi
+
+        api = HfApi(token=hf_token)
+
+        # Try to read existing README to append results
+        existing_card = ""
+        try:
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".md") as tmp:
+                api.hf_hub_download(
+                    repo_id=hf_repo,
+                    filename="README.md",
+                    local_dir=tmp.name + "_dir",
+                )
+                import pathlib
+
+                readme = pathlib.Path(tmp.name + "_dir") / "README.md"
+                if readme.exists():
+                    existing_card = readme.read_text()
+        except Exception:
+            pass
+
+        # Build benchmark results section — only aggregate scores
+        # Filter: keep top-level tasks (no _ in name) + gsm8k variants
+        # Filter: keep top-level aggregate tasks only (leaderboard_* parents)
+        # Skip individual subtasks like bbh_boolean_expressions etc.
+        main_tasks = {}
+        for t, m in comparison.items():
+            # Keep: top-level leaderboard groups + any task without subtask pattern
+            is_leaderboard_parent = t.startswith("leaderboard_") and t.count("_") <= 1
+            is_simple = "_" not in t
+            is_known_parent = t in (
+                "leaderboard_bbh",
+                "leaderboard_math_hard",
+                "leaderboard_ifeval",
+                "leaderboard_musr",
+                "leaderboard_gpqa",
+                "mmlu",
+                "gsm8k",
+                "arc_challenge",
+                "hellaswag",
+            )
+            if is_leaderboard_parent or is_simple or is_known_parent:
+                main_tasks[t] = m
+
+        bench_section = "\n\n## Benchmark Results\n\n"
+        bench_section += (
+            f"Evaluated against baseline "
+            f"[`{baseline_model}`](https://huggingface.co/{baseline_model}) "
+            f"using [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness) "
+            f"on NVIDIA L40S.\n\n"
+        )
+        if limit:
+            bench_section += f"> Evaluated on {limit} samples per task.\n\n"
+        bench_section += "| Benchmark | Baseline | Finetuned | Delta |\n"
+        bench_section += "|---|:---:|:---:|:---:|\n"
+        for task, metrics in main_tasks.items():
+            # Try common metric names in order of preference
+            acc = (
+                metrics.get("acc_norm")
+                or metrics.get("acc")
+                or metrics.get("exact_match")
+                or metrics.get("prompt_level_strict_acc")
+                or next(iter(metrics.values()), None)
+                if metrics
+                else None
+            )
+            if not acc:
+                continue
+            bv = f"{acc['baseline'] * 100:.1f}" if acc["baseline"] is not None else "—"
+            fv = (
+                f"{acc['finetuned'] * 100:.1f}" if acc["finetuned"] is not None else "—"
+            )
+            if acc["delta"] is not None:
+                d = acc["delta"] * 100
+                sign = "+" if d > 0 else ""
+                emoji = "🟢" if d > 0.1 else "🔴" if d < -0.1 else "⚪"
+                dv = f"{emoji} {sign}{d:.1f}"
+            else:
+                dv = "—"
+            # Clean label: leaderboard_bbh → BBH, leaderboard_math_hard → MATH Hard
+            label = task.replace("leaderboard_", "").replace("_", " ").title()
+            # Known pretty names
+            _labels = {
+                "bbh": "BBH",
+                "math hard": "MATH Hard",
+                "ifeval": "IFEval",
+                "musr": "MUSR",
+                "gpqa": "GPQA",
+                "mmlu": "MMLU",
+                "gsm8k": "GSM8K",
+                "arc challenge": "ARC-Challenge",
+                "hellaswag": "HellaSwag",
+            }
+            label = _labels.get(label.lower(), label)
+            bench_section += f"| **{label}** | {bv} | {fv} | {dv} |\n"
+
+        # Replace existing benchmark section or append
+        if "## Benchmark Results" in existing_card:
+            # Replace everything from "## Benchmark Results" to next ## or end
+            import re
+
+            existing_card = re.sub(
+                r"## Benchmark Results.*?(?=\n## |\Z)",
+                bench_section.strip() + "\n",
+                existing_card,
+                flags=re.DOTALL,
+            )
+            new_card = existing_card
+        elif existing_card:
+            # Insert before ## Citation or ## License or append at end
+            for marker in ["## Citation", "## License"]:
+                if marker in existing_card:
+                    new_card = existing_card.replace(
+                        marker, bench_section + "\n" + marker
+                    )
+                    break
+            else:
+                new_card = existing_card + bench_section
+        else:
+            new_card = bench_section
+
+        api.upload_file(
+            path_or_fileobj=new_card.encode(),
+            path_in_repo="README.md",
+            repo_id=hf_repo,
+            commit_message=f"Add benchmark results ({tasks})",
+        )
+
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"Benchmark results pushed to https://huggingface.co/{hf_repo}",
+                },
+            )
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-done",
+                "message": "Comparison complete",
+                "comparison": comparison,
+            },
+        )
+
+    return json.dumps(output, indent=2)  # end run_comparison
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SQL Evaluation: text-to-sql accuracy on held-out samples
+# ═══════════════════════════════════════════════════════════════════
+
+
+@app.function(
+    image=eval_image,
+    gpu="L40S",
+    volumes={"/cache": cache_vol},
+    timeout=7200,
+)
+def run_sql_eval(
+    model_id: str,
+    dataset: str = "Shumatsurontek/neo-sql-reasoning-combined",
+    num_samples: int = 100,
+    max_new_tokens: int = 256,
+    job_id: str = "",
+    hf_token: str = "",
+    hf_repo: str = "",
+) -> str:
+    """Evaluate text-to-sql accuracy on held-out dataset samples.
+
+    Loads the model, generates SQL for each prompt, and compares
+    against the reference SQL using normalized exact match.
+    """
+    import re
+
+    import torch  # noqa: F811
+    from datasets import load_dataset
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-progress",
+                "message": f"Loading model {model_id}...",
+            },
+        )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-progress",
+                "message": f"Loading dataset {dataset}...",
+            },
+        )
+
+    ds = load_dataset(dataset, split="train", cache_dir="/cache")
+    # Use last N samples as held-out test set (training used shuffled first samples)
+    test_ds = ds.select(range(max(0, len(ds) - num_samples), len(ds)))
+
+    def _normalize_sql(sql: str) -> str:
+        """Normalize SQL for comparison: lowercase, collapse whitespace, strip."""
+        s = sql.strip().rstrip(";").lower()
+        s = re.sub(r"\s+", " ", s)
+        return s
+
+    correct = 0
+    total = 0
+    results_detail = []
+
+    for i, sample in enumerate(test_ds):
+        msgs = sample["messages"] if "messages" in sample else []
+        if isinstance(msgs, str):
+            msgs = json.loads(msgs)
+
+        # Find the reference SQL (last assistant message)
+        ref_sql = ""
+        prompt_msgs = []
+        for m in msgs:
+            if m["role"] == "assistant":
+                ref_sql = m["content"]
+            else:
+                prompt_msgs.append(m)
+
+        if not ref_sql or not prompt_msgs:
+            continue
+
+        # Generate
+        text = tokenizer.apply_chat_template(
+            prompt_msgs, tokenize=False, add_generation_prompt=True
+        )
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=2048)
+        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            out = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                temperature=1.0,
+            )
+
+        generated = tokenizer.decode(
+            out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+        ).strip()
+
+        # Compare normalized SQL
+        is_match = _normalize_sql(generated) == _normalize_sql(ref_sql)
+        correct += int(is_match)
+        total += 1
+
+        results_detail.append(
+            {
+                "match": is_match,
+                "ref": ref_sql[:100],
+                "gen": generated[:100],
+            }
+        )
+
+        if job_id and (i + 1) % 10 == 0:
+            acc_so_far = correct / total if total > 0 else 0
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"SQL eval: {i + 1}/{len(test_ds)} — accuracy {acc_so_far:.1%}",
+                },
+            )
+
+    accuracy = correct / total if total > 0 else 0
+
+    sql_output = {
+        "model": model_id,
+        "dataset": dataset,
+        "num_samples": total,
+        "correct": correct,
+        "accuracy": round(accuracy, 4),
+        "details": results_detail[:10],
+    }
+
+    # Push SQL eval results to HF model card
+    if hf_token and hf_repo:
+        from huggingface_hub import HfApi
+
+        if job_id:
+            _emit(
+                job_id,
+                {
+                    "type": "eval-progress",
+                    "message": f"Pushing SQL eval results to {hf_repo}...",
+                },
+            )
+
+        api = HfApi(token=hf_token)
+
+        existing_card = ""
+        try:
+            import pathlib
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".md") as tmp:
+                api.hf_hub_download(
+                    repo_id=hf_repo,
+                    filename="README.md",
+                    local_dir=tmp.name + "_dir",
+                )
+                readme = pathlib.Path(tmp.name + "_dir") / "README.md"
+                if readme.exists():
+                    existing_card = readme.read_text()
+        except Exception:
+            pass
+
+        sql_section = "\n\n## SQL Evaluation\n\n"
+        sql_section += (
+            f"Text-to-SQL accuracy on **{total}** held-out samples from "
+            f"[`{dataset}`](https://huggingface.co/datasets/{dataset}).\n\n"
+        )
+        sql_section += "| Metric | Value |\n"
+        sql_section += "|---|:---:|\n"
+        sql_section += f"| **Exact Match Accuracy** | **{accuracy:.1%}** |\n"
+        sql_section += f"| Samples evaluated | {total} |\n"
+        sql_section += f"| Correct | {correct} |\n\n"
+        sql_section += (
+            "> Normalized exact match: SQL is lowercased, whitespace collapsed, "
+            "trailing semicolons removed before comparison.\n"
+        )
+
+        if "## SQL Evaluation" in existing_card:
+            import re as _re
+
+            existing_card = _re.sub(
+                r"## SQL Evaluation.*?(?=\n## |\Z)",
+                sql_section.strip() + "\n",
+                existing_card,
+                flags=_re.DOTALL,
+            )
+            new_card = existing_card
+        elif existing_card:
+            for marker in ["## Citation", "## License"]:
+                if marker in existing_card:
+                    new_card = existing_card.replace(
+                        marker, sql_section + "\n" + marker
+                    )
+                    break
+            else:
+                new_card = existing_card + sql_section
+        else:
+            new_card = sql_section
+
+        api.upload_file(
+            path_or_fileobj=new_card.encode(),
+            path_in_repo="README.md",
+            repo_id=hf_repo,
+            commit_message=f"Add SQL evaluation results ({total} samples)",
+        )
+
+    if job_id:
+        _emit(
+            job_id,
+            {
+                "type": "eval-done",
+                "message": f"SQL eval complete: {accuracy:.1%} accuracy ({correct}/{total})",
+                "scores": {"sql_eval": {"exact_match": accuracy}},
+            },
+        )
+
+    return json.dumps(sql_output, indent=2)

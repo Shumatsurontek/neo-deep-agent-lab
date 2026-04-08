@@ -154,7 +154,12 @@ export interface FineTuneEvent {
     | "finetune-validation"
     | "finetune-saving"
     | "finetune-done"
-    | "finetune-error";
+    | "finetune-error"
+    | "eval-start"
+    | "eval-progress"
+    | "eval-done"
+    | "eval-error"
+    | "compare-start";
   step?: number;
   total_steps?: number;
   loss?: number;
@@ -165,4 +170,22 @@ export interface FineTuneEvent {
   model_path?: string;
   final_loss?: number;
   job?: FineTuneJob;
+  scores?: Record<string, Record<string, number>>;
+  comparison?: Record<string, Record<string, { baseline: number | null; finetuned: number | null; delta: number | null }>>;
+  result?: EvalResult | CompareResult;
+}
+
+export interface EvalResult {
+  model: string;
+  tasks: string;
+  scores: Record<string, Record<string, number>>;
+}
+
+export interface CompareResult {
+  baseline_model: string;
+  finetuned_model: string;
+  tasks: string;
+  baseline_scores: Record<string, Record<string, number>>;
+  finetuned_scores: Record<string, Record<string, number>>;
+  comparison: Record<string, Record<string, { baseline: number | null; finetuned: number | null; delta: number | null }>>;
 }

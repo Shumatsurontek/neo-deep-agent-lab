@@ -2,6 +2,6 @@
   "venvPath": ".",
   "venv": ".venv",
   "include": ["src"],
-  "exclude": ["src/sandbox/scripts"],
+  "exclude": ["src/sandbox/scripts", "src/finetune/modal_app.py"],
   "reportMissingImports": true
 }

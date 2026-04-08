@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { FineTuneConfig, FineTuneEvent, FineTuneJob, TrainedModel } from "../types";
+import type { CompareResult, FineTuneConfig, FineTuneEvent, FineTuneJob, TrainedModel } from "../types";
 import { apiGet, apiPost, authHeaders } from "../lib/api";
 
 interface LossPoint {
@@ -28,6 +28,11 @@ interface FineTuneState {
   inferMessages: InferMessage[];
   isInferring: boolean;
 
+  // Eval state
+  isEvaluating: boolean;
+  evalEvents: FineTuneEvent[];
+  evalResult: CompareResult | null;
+
   updateConfig: (partial: Partial<FineTuneConfig>) => void;
   startJob: () => Promise<void>;
   cancelJob: (jobId: string) => Promise<void>;
@@ -40,6 +45,13 @@ interface FineTuneState {
   pushModel: () => Promise<string | null>;
   deployModel: () => Promise<void>;
   sendInference: (prompt: string) => Promise<void>;
+
+  // Eval methods
+  runCompare: (baseline: string, finetuned: string, tasks: string, limit?: number) => Promise<void>;
+  runSqlEval: (modelId: string, numSamples?: number) => Promise<void>;
+  clearEval: () => void;
+  isSqlEvaluating: boolean;
+  sqlEvalResult: { accuracy: number; correct: number; num_samples: number } | null;
 }
 
 const DEFAULT_CONFIG: FineTuneConfig = {
@@ -102,6 +114,11 @@ export const useFineTuneStore = create<FineTuneState>((set, get) => ({
   isServing: false,
   inferMessages: [],
   isInferring: false,
+  isEvaluating: false,
+  evalEvents: [],
+  evalResult: null,
+  isSqlEvaluating: false,
+  sqlEvalResult: null,
 
   updateConfig: (partial) => {
     set((s) => ({ config: { ...s.config, ...partial } }));
@@ -225,6 +242,98 @@ export const useFineTuneStore = create<FineTuneState>((set, get) => ({
       }
     } catch {
       set({ isServing: false });
+    }
+  },
+
+  clearEval: () => set({ evalEvents: [], evalResult: null, sqlEvalResult: null }),
+
+  runSqlEval: async (modelId, numSamples = 100) => {
+    set({ isSqlEvaluating: true, sqlEvalResult: null, evalEvents: [] });
+
+    try {
+      const { config } = get();
+      const headers = await authHeaders();
+      const res = await fetch("/finetune/sql-eval", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model_id: modelId,
+          num_samples: numSamples,
+          hf_token: config.hf_token,
+          hf_repo: config.hf_repo || modelId,
+        }),
+      });
+
+      if (!res.ok) {
+        set({ isSqlEvaluating: false, evalEvents: [{ type: "eval-error", message: await res.text() }] });
+        return;
+      }
+
+      await consumeSSE(res, (event) => {
+        set((s) => {
+          const evalEvents = [...s.evalEvents, event];
+          let sqlEvalResult = s.sqlEvalResult;
+
+          if (event.type === "eval-done" && event.result) {
+            const r = event.result as unknown as { accuracy: number; correct: number; num_samples: number };
+            if (r?.accuracy != null) sqlEvalResult = r;
+          }
+
+          const isDone = event.type === "eval-done" || event.type === "eval-error";
+          return { evalEvents, sqlEvalResult, isSqlEvaluating: !isDone };
+        });
+      });
+    } catch (err) {
+      set({ isSqlEvaluating: false, evalEvents: [{ type: "eval-error", message: String(err) }] });
+    }
+  },
+
+  runCompare: async (baseline, finetuned, tasks, limit) => {
+    set({ isEvaluating: true, evalEvents: [], evalResult: null });
+
+    try {
+      const headers = await authHeaders();
+      const { config } = get();
+      const res = await fetch("/finetune/compare", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          baseline_model: baseline,
+          finetuned_model: finetuned,
+          tasks,
+          limit: limit ?? null,
+          hf_token: config.hf_token,
+          hf_repo: config.hf_repo || finetuned,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set({
+          isEvaluating: false,
+          evalEvents: [{ type: "eval-error", message: err }],
+        });
+        return;
+      }
+
+      await consumeSSE(res, (event) => {
+        set((s) => {
+          const evalEvents = [...s.evalEvents, event];
+          let evalResult = s.evalResult;
+
+          if (event.type === "eval-done" && event.result) {
+            evalResult = event.result as CompareResult;
+          }
+
+          const isDone = event.type === "eval-done" || event.type === "eval-error";
+          return { evalEvents, evalResult, isEvaluating: !isDone };
+        });
+      });
+    } catch (err) {
+      set({
+        isEvaluating: false,
+        evalEvents: [{ type: "eval-error", message: String(err) }],
+      });
     }
   },
 

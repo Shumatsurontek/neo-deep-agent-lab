@@ -24,6 +24,11 @@ import {
   EyeOff,
   RefreshCw,
   Upload,
+  BarChart3,
+  ArrowUpDown,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -53,6 +58,8 @@ export function FineTunePanel() {
     startJob, cancelJob, loadJobs, clearEvents,
     trainedModels, selectedModelPath, servingUrl, isServing, inferMessages, isInferring,
     selectModel, loadModels, pushModel, deployModel, sendInference,
+    isEvaluating, evalEvents, evalResult, runCompare, clearEval,
+    isSqlEvaluating, sqlEvalResult, runSqlEval,
   } = useFineTuneStore();
 
   const [inferInput, setInferInput] = useState("");
@@ -62,6 +69,10 @@ export function FineTunePanel() {
   const [pushResult, setPushResult] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(true);
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [evalBaseline, setEvalBaseline] = useState("unsloth/Qwen3.5-4B");
+  const [evalFinetuned, setEvalFinetuned] = useState("Shumatsurontek/Qwen3.5-4B-neo");
+  const [evalTasks, setEvalTasks] = useState("leaderboard_bbh,leaderboard_ifeval,leaderboard_musr");
+  const [evalLimit, setEvalLimit] = useState(50);
   const inferBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -409,6 +420,269 @@ export function FineTunePanel() {
                 </div>
               </Collapsible>
             )}
+
+            {/* ── Benchmark ── */}
+            <div className="rounded-lg border border-dashed border-border-default bg-surface-base overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cb-purple/10 border border-dashed border-cb-purple/20 shrink-0">
+                  <BarChart3 className="w-3.5 h-3.5 text-cb-purple" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-mono text-sm text-text-primary font-medium">// benchmark</h2>
+                  <p className="font-mono text-[10px] text-text-dim mt-0.5">lm-eval · baseline vs finetuned</p>
+                </div>
+                {evalEvents.length > 0 && !isEvaluating && (
+                  <button onClick={clearEval} className="font-mono text-[10px] text-text-dim hover:text-text-muted transition-colors px-2 py-1 rounded border border-dashed border-border-default">
+                    reset
+                  </button>
+                )}
+              </div>
+
+              <div className="px-5 pb-5 space-y-4 border-t border-dashed border-border-default pt-4">
+                {/* Two model inputs side by side */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">baseline</label>
+                    <input
+                      value={evalBaseline}
+                      onChange={(e) => setEvalBaseline(e.target.value)}
+                      disabled={isEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2.5 text-text-muted focus:border-cb-purple focus:ring-1 focus:ring-cb-purple outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-text-dim shrink-0 mb-2" />
+                  <div className="flex-1">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">finetuned</label>
+                    <input
+                      value={evalFinetuned}
+                      onChange={(e) => setEvalFinetuned(e.target.value)}
+                      disabled={isEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2.5 text-cb-purple focus:border-cb-purple focus:ring-1 focus:ring-cb-purple outline-none disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                {/* Tasks + Limit + Run — single row */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">tasks</label>
+                    <input
+                      value={evalTasks}
+                      onChange={(e) => setEvalTasks(e.target.value)}
+                      disabled={isEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2.5 text-text-primary focus:border-cb-purple focus:ring-1 focus:ring-cb-purple outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="w-16">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">limit</label>
+                    <input
+                      type="number"
+                      value={evalLimit}
+                      onChange={(e) => setEvalLimit(Number(e.target.value))}
+                      disabled={isEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2 text-center text-text-primary focus:border-cb-purple focus:ring-1 focus:ring-cb-purple outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  {!isEvaluating ? (
+                    <button
+                      onClick={() => runCompare(evalBaseline, evalFinetuned, evalTasks, evalLimit || undefined)}
+                      className="h-8 flex items-center gap-1.5 font-mono text-[11px] text-surface-dim bg-cb-purple px-4 rounded-md hover:bg-cb-purple/80 transition-colors font-medium shrink-0"
+                    >
+                      <Play className="w-3 h-3" />
+                      run
+                    </button>
+                  ) : (
+                    <div className="h-8 flex items-center gap-1.5 font-mono text-[11px] text-cb-purple px-3 shrink-0">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress — compact status line */}
+                {isEvaluating && evalEvents.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-cb-purple/5 border border-dashed border-cb-purple/15">
+                    <Loader2 className="w-3 h-3 text-cb-purple animate-spin shrink-0" />
+                    <span className="font-mono text-[10px] text-text-secondary truncate">
+                      {evalEvents.at(-1)?.message}
+                    </span>
+                  </div>
+                )}
+
+                {/* Results — only show aggregate scores, filter out subtasks */}
+                {evalResult?.comparison && (() => {
+                  const mainTasks = Object.entries(evalResult.comparison).filter(
+                    ([task]) => !task.includes("_") || task === "gsm8k_cot"
+                  );
+                  return (
+                    <div className="space-y-3">
+                      {/* Score cards */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {mainTasks.map(([task, metrics]) => {
+                          const acc = metrics.acc_norm || metrics.acc || metrics.exact_match || metrics.prompt_level_strict_acc || Object.values(metrics)[0];
+                          if (!acc) return null;
+                          const delta = acc.delta;
+                          return (
+                            <div key={task} className="rounded-lg border border-dashed border-border-default p-3 space-y-2">
+                              <div className="font-mono text-[10px] text-text-dim uppercase tracking-widest">{task.replace("_cot", " (CoT)")}</div>
+                              <div className="flex items-baseline justify-between gap-2">
+                                <div>
+                                  <div className="font-mono text-[9px] text-text-dim">base</div>
+                                  <div className="font-mono text-lg text-text-muted">
+                                    {acc.baseline != null ? (acc.baseline * 100).toFixed(1) : "—"}
+                                    <span className="text-[10px] text-text-dim">%</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-mono text-[9px] text-text-dim">tuned</div>
+                                  <div className="font-mono text-lg text-text-primary font-medium">
+                                    {acc.finetuned != null ? (acc.finetuned * 100).toFixed(1) : "—"}
+                                    <span className="text-[10px] text-text-dim">%</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {delta != null && (
+                                <div className={`flex items-center justify-center gap-1 font-mono text-xs py-1 rounded-md ${
+                                  delta > 0.001 ? "text-cb-green bg-cb-green/5" : delta < -0.001 ? "text-cb-red bg-cb-red/5" : "text-text-dim bg-surface-dim"
+                                }`}>
+                                  {delta > 0.001 ? <TrendingUp className="w-3 h-3" /> : delta < -0.001 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                  {delta > 0 ? "+" : ""}{(delta * 100).toFixed(1)}%
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Expandable detail table */}
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-1.5 font-mono text-[10px] text-text-dim hover:text-text-muted cursor-pointer transition-colors">
+                          <ChevronRight className="w-3 h-3" />
+                          all subtasks ({Object.keys(evalResult.comparison).length})
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 rounded-md border border-dashed border-border-default overflow-hidden max-h-52 overflow-y-auto">
+                            <table className="w-full">
+                              <thead className="sticky top-0 bg-surface-base">
+                                <tr>
+                                  <th className="font-mono text-[9px] text-text-dim uppercase text-left px-2.5 py-1.5">task</th>
+                                  <th className="font-mono text-[9px] text-text-dim uppercase text-right px-2.5 py-1.5">base</th>
+                                  <th className="font-mono text-[9px] text-text-dim uppercase text-right px-2.5 py-1.5">tuned</th>
+                                  <th className="font-mono text-[9px] text-text-dim uppercase text-right px-2.5 py-1.5">delta</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Object.entries(evalResult.comparison).map(([task, metrics]) => {
+                                  const acc = metrics.acc_norm || metrics.acc || metrics.exact_match || metrics.prompt_level_strict_acc || Object.values(metrics)[0];
+                                  if (!acc) return null;
+                                  return (
+                                    <tr key={task} className="border-t border-dashed border-border-default/50">
+                                      <td className="font-mono text-[10px] text-text-secondary px-2.5 py-1 truncate max-w-[200px]">{task}</td>
+                                      <td className="font-mono text-[10px] text-text-muted text-right px-2.5 py-1">
+                                        {acc.baseline != null ? (acc.baseline * 100).toFixed(0) : "—"}
+                                      </td>
+                                      <td className="font-mono text-[10px] text-text-primary text-right px-2.5 py-1">
+                                        {acc.finetuned != null ? (acc.finetuned * 100).toFixed(0) : "—"}
+                                      </td>
+                                      <td className={`font-mono text-[10px] text-right px-2.5 py-1 ${
+                                        acc.delta != null && acc.delta > 0.001 ? "text-cb-green" : acc.delta != null && acc.delta < -0.001 ? "text-cb-red" : "text-text-dim"
+                                      }`}>
+                                        {acc.delta != null ? `${acc.delta > 0 ? "+" : ""}${(acc.delta * 100).toFixed(0)}` : "—"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      {/* HF push status */}
+                      {config.hf_token && config.hf_repo && (
+                        <div className="font-mono text-[10px] text-cb-green flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Results pushed to {config.hf_repo}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* ── SQL Eval ── */}
+            <div className="rounded-lg border border-dashed border-border-default bg-surface-base overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cb-cyan/10 border border-dashed border-cb-cyan/20 shrink-0">
+                  <Database className="w-3.5 h-3.5 text-cb-cyan" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-mono text-sm text-text-primary font-medium">// sql_eval</h2>
+                  <p className="font-mono text-[10px] text-text-dim mt-0.5">exact match on held-out samples</p>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 space-y-3 border-t border-dashed border-border-default pt-4">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">model</label>
+                    <input
+                      value={evalFinetuned}
+                      onChange={(e) => setEvalFinetuned(e.target.value)}
+                      disabled={isSqlEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2.5 text-cb-cyan focus:border-cb-cyan focus:ring-1 focus:ring-cb-cyan outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="w-16">
+                    <label className="font-mono text-[9px] text-text-dim uppercase tracking-widest mb-1 block">samples</label>
+                    <input
+                      type="number"
+                      value={evalLimit}
+                      onChange={(e) => setEvalLimit(Number(e.target.value))}
+                      disabled={isSqlEvaluating}
+                      className="w-full h-8 font-mono text-[11px] bg-surface-dim border border-dashed border-border-default rounded-md px-2 text-center text-text-primary focus:border-cb-cyan focus:ring-1 focus:ring-cb-cyan outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  {!isSqlEvaluating ? (
+                    <button
+                      onClick={() => runSqlEval(evalFinetuned, evalLimit || 100)}
+                      className="h-8 flex items-center gap-1.5 font-mono text-[11px] text-surface-dim bg-cb-cyan px-4 rounded-md hover:bg-cb-cyan/80 transition-colors font-medium shrink-0"
+                    >
+                      <Play className="w-3 h-3" />
+                      run
+                    </button>
+                  ) : (
+                    <div className="h-8 flex items-center gap-1.5 font-mono text-[11px] text-cb-cyan px-3 shrink-0">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress */}
+                {isSqlEvaluating && evalEvents.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-cb-cyan/5 border border-dashed border-cb-cyan/15">
+                    <Loader2 className="w-3 h-3 text-cb-cyan animate-spin shrink-0" />
+                    <span className="font-mono text-[10px] text-text-secondary truncate">
+                      {evalEvents.at(-1)?.message}
+                    </span>
+                  </div>
+                )}
+
+                {/* Result card */}
+                {sqlEvalResult && (
+                  <div className="rounded-lg border border-dashed border-cb-cyan/20 p-4 text-center space-y-2">
+                    <div className="font-mono text-[10px] text-text-dim uppercase tracking-widest">SQL Exact Match</div>
+                    <div className="font-mono text-3xl text-cb-cyan font-medium">
+                      {(sqlEvalResult.accuracy * 100).toFixed(1)}<span className="text-sm text-text-dim">%</span>
+                    </div>
+                    <div className="font-mono text-[10px] text-text-dim">
+                      {sqlEvalResult.correct} / {sqlEvalResult.num_samples} correct
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </ScrollArea>
       </div>

@@ -373,3 +373,288 @@ async def infer(
         }
     except Exception as exc:
         return {"error": f"Inference error: {exc}"}
+
+
+# ── Evaluation endpoints ──
+
+
+class EvalRequest(BaseModel):
+    model_id: str = "Shumatsurontek/Qwen3.5-4B-neo"
+    tasks: str = "leaderboard_bbh,leaderboard_ifeval,leaderboard_musr"
+    num_fewshot: int | None = None
+    limit: int | None = None
+
+
+class CompareRequest(BaseModel):
+    baseline_model: str = "unsloth/Qwen3.5-4B"
+    finetuned_model: str = "Shumatsurontek/Qwen3.5-4B-neo"
+    tasks: str = "leaderboard_bbh,leaderboard_ifeval,leaderboard_musr"
+    num_fewshot: int | None = None
+    limit: int | None = None
+    hf_token: str = ""
+    hf_repo: str = ""
+
+
+@router.post("/eval")
+async def run_eval(
+    req: EvalRequest,
+    _session: Session = Depends(_get_session),
+):
+    """Run lm-eval benchmarks on a single model. Returns SSE stream."""
+    job_id = str(uuid.uuid4())
+
+    async def generate() -> AsyncGenerator[str, None]:
+        yield _sse(
+            {
+                "type": "eval-start",
+                "job_id": job_id,
+                "model": req.model_id,
+                "tasks": req.tasks,
+                "message": f"Starting eval: {req.model_id} on [{req.tasks}]...",
+            }
+        )
+
+        try:
+            fn = await asyncio.to_thread(
+                modal.Function.from_name, _MODAL_APP_NAME, "run_evaluation"
+            )
+
+            call = await asyncio.to_thread(
+                fn.spawn,
+                req.model_id,
+                req.tasks,
+                req.num_fewshot,
+                req.limit,
+                job_id,
+            )
+
+            progress = await asyncio.to_thread(_get_progress_dict)
+            seen = 0
+
+            while True:
+                await asyncio.sleep(3)
+
+                try:
+                    count = await asyncio.to_thread(
+                        progress.get, f"count:{job_id}", default=0
+                    )
+                    if count > seen:
+                        raw = await asyncio.to_thread(
+                            progress.get, f"events:{job_id}", default="[]"
+                        )
+                        events = json.loads(raw)
+                        for event in events[seen:]:
+                            yield _sse(event)
+                            if event.get("type") == "eval-done":
+                                return
+                        seen = count
+                except Exception as poll_err:
+                    logger.debug("Eval poll error: %s", poll_err)
+
+                try:
+                    result = await asyncio.to_thread(call.get, timeout=0)
+                    yield _sse(
+                        {
+                            "type": "eval-done",
+                            "message": "Evaluation complete",
+                            "result": json.loads(result),
+                        }
+                    )
+                    return
+                except TimeoutError:
+                    continue
+                except Exception as exc:
+                    yield _sse({"type": "eval-error", "message": str(exc)})
+                    return
+
+        except Exception as exc:
+            logger.exception("Evaluation error")
+            yield _sse({"type": "eval-error", "message": str(exc)})
+
+    return StreamingResponse(
+        content=generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/compare")
+async def run_comparison(
+    req: CompareRequest,
+    _session: Session = Depends(_get_session),
+):
+    """Run benchmarks on baseline vs fine-tuned model. Returns SSE stream."""
+    job_id = str(uuid.uuid4())
+
+    async def generate() -> AsyncGenerator[str, None]:
+        yield _sse(
+            {
+                "type": "compare-start",
+                "job_id": job_id,
+                "baseline": req.baseline_model,
+                "finetuned": req.finetuned_model,
+                "tasks": req.tasks,
+                "message": (
+                    f"Comparing {req.baseline_model} vs "
+                    f"{req.finetuned_model} on [{req.tasks}]..."
+                ),
+            }
+        )
+
+        try:
+            fn = await asyncio.to_thread(
+                modal.Function.from_name, _MODAL_APP_NAME, "run_comparison"
+            )
+
+            call = await asyncio.to_thread(
+                fn.spawn,
+                req.baseline_model,
+                req.finetuned_model,
+                req.tasks,
+                req.num_fewshot,
+                req.limit,
+                job_id,
+                req.hf_token,
+                req.hf_repo,
+            )
+
+            progress = await asyncio.to_thread(_get_progress_dict)
+            seen = 0
+
+            while True:
+                await asyncio.sleep(5)
+
+                try:
+                    count = await asyncio.to_thread(
+                        progress.get, f"count:{job_id}", default=0
+                    )
+                    if count > seen:
+                        raw = await asyncio.to_thread(
+                            progress.get, f"events:{job_id}", default="[]"
+                        )
+                        events = json.loads(raw)
+                        for event in events[seen:]:
+                            yield _sse(event)
+                            if event.get("type") == "eval-done":
+                                return
+                        seen = count
+                except Exception as poll_err:
+                    logger.debug("Compare poll error: %s", poll_err)
+
+                try:
+                    result = await asyncio.to_thread(call.get, timeout=0)
+                    yield _sse(
+                        {
+                            "type": "eval-done",
+                            "message": "Comparison complete",
+                            "result": json.loads(result),
+                        }
+                    )
+                    return
+                except TimeoutError:
+                    continue
+                except Exception as exc:
+                    yield _sse({"type": "eval-error", "message": str(exc)})
+                    return
+
+        except Exception as exc:
+            logger.exception("Comparison error")
+            yield _sse({"type": "eval-error", "message": str(exc)})
+
+    return StreamingResponse(
+        content=generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+class SqlEvalRequest(BaseModel):
+    model_id: str = "Shumatsurontek/Qwen3.5-4B-neo"
+    dataset: str = "Shumatsurontek/neo-sql-reasoning-combined"
+    num_samples: int = 100
+    hf_token: str = ""
+    hf_repo: str = ""
+
+
+@router.post("/sql-eval")
+async def sql_eval(
+    req: SqlEvalRequest,
+    _session: Session = Depends(_get_session),
+):
+    """Run SQL exact-match evaluation. Returns SSE stream."""
+    job_id = str(uuid.uuid4())
+
+    async def generate() -> AsyncGenerator[str, None]:
+        yield _sse(
+            {
+                "type": "eval-start",
+                "job_id": job_id,
+                "model": req.model_id,
+                "message": f"Starting SQL eval: {req.model_id} ({req.num_samples} samples)...",
+            }
+        )
+
+        try:
+            fn = await asyncio.to_thread(
+                modal.Function.from_name, _MODAL_APP_NAME, "run_sql_eval"
+            )
+
+            call = await asyncio.to_thread(
+                fn.spawn,
+                req.model_id,
+                req.dataset,
+                req.num_samples,
+                256,
+                job_id,
+                req.hf_token,
+                req.hf_repo,
+            )
+
+            progress = await asyncio.to_thread(_get_progress_dict)
+            seen = 0
+
+            while True:
+                await asyncio.sleep(3)
+
+                try:
+                    count = await asyncio.to_thread(
+                        progress.get, f"count:{job_id}", default=0
+                    )
+                    if count > seen:
+                        raw = await asyncio.to_thread(
+                            progress.get, f"events:{job_id}", default="[]"
+                        )
+                        events = json.loads(raw)
+                        for event in events[seen:]:
+                            yield _sse(event)
+                            if event.get("type") == "eval-done":
+                                return
+                        seen = count
+                except Exception as poll_err:
+                    logger.debug("SQL eval poll error: %s", poll_err)
+
+                try:
+                    result = await asyncio.to_thread(call.get, timeout=0)
+                    yield _sse(
+                        {
+                            "type": "eval-done",
+                            "message": "SQL evaluation complete",
+                            "result": json.loads(result),
+                        }
+                    )
+                    return
+                except TimeoutError:
+                    continue
+                except Exception as exc:
+                    yield _sse({"type": "eval-error", "message": str(exc)})
+                    return
+
+        except Exception as exc:
+            logger.exception("SQL eval error")
+            yield _sse({"type": "eval-error", "message": str(exc)})
+
+    return StreamingResponse(
+        content=generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
